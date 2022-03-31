@@ -1,0 +1,34 @@
+[
+    {
+        "name": "Cybersecurity",
+        "topics": [
+            {"name": "binary algebra"},
+            {"name": "cryptography"},
+            {"name": "hashing algorithms"}
+        ]
+    },
+    {
+        "name": "Codebusters",
+        "topics": [
+            {"name": "timed aristocrats"},
+            {"name": "patristocrats"},
+            {"name": "vigenere"}
+        ]
+    },
+    {
+        "name": "WiFi lab",
+        "topics": [
+            {"name": "propogation"},
+            {"name": "antenna types"}
+        ]
+    },
+    {
+        "name": "Detector building",
+        "topics": [
+            {"name": "salinity"},
+            {"name": "circuits"},
+            {"name": "Arduino"}
+        ]
+    }
+
+]
