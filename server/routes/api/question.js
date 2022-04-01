@@ -94,6 +94,8 @@ function checkSolution(question, solution) {
                     }
                 }
             }
+            else
+                mistakes = key.length
 
             console.debug(key)
             console.debug(solution)
