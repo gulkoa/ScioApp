@@ -12,7 +12,11 @@
         "topics": [
             {"name": "timed aristocrats"},
             {"name": "patristocrats"},
-            {"name": "vigenere"}
+            {"name": "vigenere"},
+            {"name": "railfence"},
+            {"name": "pollux"},
+            {"name": "morbit"},
+            {"name": "hill"}
         ]
     },
     {
