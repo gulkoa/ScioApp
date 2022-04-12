@@ -24,9 +24,10 @@ app.use(cors())
 
 const port = process.env.PORT || 5000
 const question = require('./routes/api/question')
-const { set } = require('express/lib/application')
 
-require('dotenv').config();
+// const { set } = require('express/lib/application')
+
+// require('dotenv').config();
 // console.log(process.env)
 
 // //Auth0
