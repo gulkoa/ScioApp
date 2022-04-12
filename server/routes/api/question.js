@@ -178,7 +178,7 @@ router.post('/submitSolution', async (req, res) => {
             userID,
             userSolution: solution,
             questionType: question.type,
-            eventName: question.eventName,
+            event: question.event,
             checkReport
         }
         if (!checkReport.continue)
