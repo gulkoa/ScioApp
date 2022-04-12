@@ -2,6 +2,7 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
 const mongodb = require('mongodb')
+const Vault = require('hashi-vault-js')
 
 const dbSecret = require('./dbSecret.json')
 // const cloudinary = require('cloudinary')
@@ -23,7 +24,10 @@ app.use(cors())
 
 const port = process.env.PORT || 5000
 const question = require('./routes/api/question')
-// require('dotenv').config();
+const { set } = require('express/lib/application')
+
+require('dotenv').config();
+// console.log(process.env)
 
 // //Auth0
 // const { auth } = require('express-openid-connect');
@@ -47,25 +51,28 @@ const question = require('./routes/api/question')
 //   res.send(req.oidc.isAuthenticated() ? 'Logged in' : 'Logged out');
 // });
 
-//connecting db
-mongodb.MongoClient.connect(`mongodb+srv://${dbSecret.username}:${dbSecret.password}@cluster0.ofpmb.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`, {useNewUrlParser: true})
-    .then(client => {
-        question.setUp(client)
-        
+
+
+setUp()
+async function setUp() {
+    try {
+        const DBClient = await mongodb.MongoClient.connect(`mongodb+srv://${dbSecret.username}:${dbSecret.password}@cluster0.ofpmb.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`, {useNewUrlParser: true})
+        question.setUp(DBClient)
+
         if (process.env.NODE_ENV === 'production') {
             app.use(express.static(__dirname + '/public'))
             app.get(/.*/, (req, res) => {
                 res.sendFile(__dirname + '/public/index.html')
             })
         }
-        
+
         app.listen(port, () => console.log(`The server is up! Listening at ${port}`))
 
-        // auth0.authorize()
-    })
-    .catch(err => {
-        console.error('\nDB error!\n' + err)
-    })
+            // auth0.authorize()
+    } catch (error) {
+        console.log('Error! \n' + error)
+    }
+}
 //api routing
 app.use('/api/question/', question.router)
 app.use('/api/question/submitSolution', question.router)

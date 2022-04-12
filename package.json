@@ -18,6 +18,7 @@
     "express": "^4.17.3",
     "express-openid-connect": "^2.7.2",
     "find-config": "^1.0.0",
+    "hashi-vault-js": "^0.4.8",
     "mongodb": "^4.2.0",
     "prompt-sync": "^4.2.0"
   },

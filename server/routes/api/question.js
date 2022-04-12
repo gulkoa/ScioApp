@@ -12,49 +12,144 @@ function setUp(DBclient) {
 const router = express.Router()
 
 router.post('/loadFeed', async (req, res) => {
-    const {event, topicsNames, userID} = req.body
-    const questions = await db.questions.find({event, topic: {$in: topicsNames}, showInFeed: true}).toArray()
-    if (questions.length == 0) {
-        res.json({status: false, message: "No questions found"})
-    }
-    else {
+    try {
+        const {event, topicsNames, userID} = req.body
+        if (!userID) {
+            res.send({
+                status: false,
+                message: "UserID is missing in request"
+            })
+            return
+        }
+        if (!userID) {
+            res.send({
+                status: false,
+                message: "UserID is missing in request"
+            })
+            return
+        }
+        const questions = await db.questions.find({event, topic: {$in: topicsNames}, showInFeed: true}).toArray()
+        if (questions.length == 0) {
+            res.json({status: false, message: "No questions found"})
+            return
+        }
         //console.log(questions.length, Math.floor(Math.random() * questions.length))
-        const question = questions[Math.floor(Math.random() * questions.length)]
-        delete question.question
+        let randomIndex = Math.floor(Math.random() * questions.length)
+        let question = questions[randomIndex]
+        while(questions.length > 0) {
+            let thisSubmission = await db.submissions.find({questionID: question._id.toString(), userID}, {sort: {timestamp: -1}}).limit(1).toArray()
+            thisSubmission = thisSubmission[0]
+            if (thisSubmission && Date.now() - thisSubmission.timestamp < 1000 * 60 * 60 * 24 * 7) {
+                questions.splice(randomIndex, 1)
+                randomIndex = Math.floor(Math.random() * questions.length)
+                question = questions[randomIndex]
+            }
+            else {
+                delete question.question
+                res.json({
+                    status: true,
+                    question
+                })
+                return
+            }
+        }
         res.json({
-            status: true,
-            question
+            status: false,
+            message: "No questions found that were not answered during the last week"
+        })
+    }
+    catch(err) {
+        console.error(err)
+        res.json({
+            status: false,
+            message: "Unknown server error"
         })
     }
 })
 
 router.post('/loadLibrary', async (req, res) => {
-    const {event, topicsNames, userID} = req.body
-    const questions = await db.questions.find({event, topic: {$in: topicsNames}, showInLibrary: true}).toArray()
-    // console.log(questions.length)
-    if (questions.length == 0) {
-        res.json({status: false, message: "No questions found"})
+    try {
+        const {event, topicsNames, userID} = req.body
+        if (!userID) {
+            res.send({
+                status: false,
+                message: "UserID is missing in request"
+            })
+            return
+        }
+        let questions = await db.questions.find({event, topic: {$in: topicsNames}, showInLibrary: true}).toArray()
+        // console.log(questions.length)
+        if (questions.length == 0) {
+            res.json({status: false, message: "No questions found"})
+        }
+        else {
+            for (let question of questions) {
+                let submission = await db.submissions.find({questionID: question._id.toString(), userID}, {sort: {timestamp: -1}}).limit(1).toArray()
+                submission = submission[0]
+                // console.log(submission)
+                if (submission) {
+                    question.solved = true
+                    question.solvedDate = submission.timestamp
+                    question.solvedDaysAgo = Math.floor((Date.now() - submission.timestamp) / 1000 / 60 / 60 / 24)
+                    if (question.solvedDaysAgo == 0) {
+                        question.solvedDateMessage = "today"
+                    }
+                    else if (question.solvedDaysAgo == 1) {
+                        question.solvedDateMessage = "yesterday"
+                    }
+                    else {
+                        question.solvedDateMessage = question.solvedDaysAgo + " days ago"
+                    }
+                }
+                else {
+                    question.solved = false
+                }
+                console.log(question.solved)
+                delete question.secret
+            }
+            res.json({
+                status: true,
+                questions
+            })
+        }
     }
-    else {
-        questions.forEach(question => { delete question.secret })
+    catch (err) {
+        console.error(err)
         res.json({
-            status: true,
-            questions
+            status: false,
+            message: "Unknown server error"
         })
     }
+
 })
 
 router.post('/loadQuestion', async (req, res) => {
-    const {questionID, userID} = req.body
-    const question = await db.questions.findOne({_id: mongodb.ObjectId(questionID)})
-    // console.log(questions.length)
-    if (!question) {
-        res.json({status: false, message: "Question not found"})
+    try {
+        const {questionID, userID} = req.body
+        if (!userID) {
+            res.send({
+                status: false,
+                message: "UserID is missing in request"
+            })
+            return
+        }
+        const question = await db.questions.findOne({_id: mongodb.ObjectId(questionID)})
+        // console.log(questions.length)
+        if (!question) {
+            res.json({status: false, message: "Question not found"})
+        }
+        else {
+            res.json({
+                status: true,
+                question
+            })
+        }
     }
-    else {
+    catch (err) {
+        console.error(err)
         res.json({
-            status: true,
-            question
+            status: false,
+            message: "Unknown server error"
         })
     }
 })
@@ -63,24 +158,31 @@ router.post('/loadQuestion', async (req, res) => {
 
 router.post('/submitSolution', async (req, res) => {
     try {
-        let question = await db.questions.findOne({_id: new mongodb.ObjectId(req.body.questionID)})
+        const {questionID, userID, solution} = req.body
+        if (!userID) {
+            res.send({
+                status: false,
+                message: "UserID is missing in request"
+            })
+            return
+        }
+        let question = await db.questions.findOne({_id: new mongodb.ObjectId(questionID)})
 
-        const solution = req.body.solution
         const checkReport = checkSolution(question, solution)
         // console.log(solution, checkReport)
     
         //post submision to db
         const submission = {
             timestamp: Date.now(),
-            questionID: req.body.questionID,
-            userID: req.body.userID,
+            questionID,
+            userID,
             userSolution: solution,
             questionType: question.type,
             eventName: question.eventName,
             checkReport
         }
-        // if (!checkReport.continue)
-        //     await db.submissions.insertOne(submission)
+        if (!checkReport.continue)
+            await db.submissions.insertOne(submission)
     
         res.json({
             status: true,
@@ -90,7 +192,8 @@ router.post('/submitSolution', async (req, res) => {
     } catch(err) {
         console.error(err)
         res.json({
-            status: false
+            status: false,
+            message: "Unknown server error"
         })
     }
 })
@@ -110,7 +213,8 @@ router.post('/mockSubmitSolution', async (req, res) => {
     } catch(err) {
         console.error(err)
         res.json({
-            status: false
+            status: false,
+            message: "Unknown server error"
         })
     }
 })
@@ -128,16 +232,25 @@ router.post('/addQuestion', async (req, res) => {
     } catch(err) {
         console.error(err)
         res.json({
-            status: false
+            status: false,
+            message: "Unknown server error"
         })
     }
 })
 
 router.get('/getEvents', async (req, res) => {
-    let events = require('../../events.json')
-    res.json({
-        events
-    })
+    try {
+        let events = require('../../events.json')
+        res.json({
+            events
+        })
+    } catch(err) {
+        console.error(err)
+        res.json({
+            status: false,
+            message: "Unknown server error"
+        })
+    }
 })
 
 
