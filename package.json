@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",
-    "commit and push": "git add . && git commit -m \"update\" && git push heroku master"
+    "commit": "git add . && git commit -m \"update\"",
+    "push": "git push heroku master"
   },
   "author": "Alex Gulko",
   "license": "ISC",
