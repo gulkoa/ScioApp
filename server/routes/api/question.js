@@ -104,7 +104,9 @@ router.post('/loadLibrary', async (req, res) => {
                 else {
                     question.solved = false
                 }
-                console.log(question.solved)
+                const submissions = await db.submissions.find({questionID: question._id.toString()}).toArray()
+                if (submissions && submissions.length > 0)
+                    question.averageTime = submissions.reduce((summ, sub) => summ + sub.userSolution.time, 0) / submissions.length
                 delete question.secret
             }
             res.json({
