@@ -90,7 +90,7 @@ router.post('/loadLibrary', async (req, res) => {
                 if (submission) {
                     question.solved = true
                     question.solvedDate = submission.timestamp
-                    question.solvedDaysAgo = Math.floor((Date.now() - submission.timestamp) / 1000 / 60 / 60 / 24)
+                    question.solvedDaysAgo = new Date().getDate() - new Date(submission.timestamp).getDate()
                     if (question.solvedDaysAgo == 0) {
                         question.solvedDateMessage = "today"
                     }
