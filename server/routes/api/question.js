@@ -141,6 +141,7 @@ router.post('/loadQuestion', async (req, res) => {
             res.json({status: false, message: "Question not found"})
         }
         else {
+            delete question.secret
             res.json({
                 status: true,
                 question
