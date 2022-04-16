@@ -128,6 +128,15 @@ router.post('/loadLibrary', async (req, res) => {
 router.post('/loadQuestion', async (req, res) => {
     try {
         const {questionID, userID} = req.body
+
+
+        if (questionID == 'aurora1445') {
+            console.log('test question requested')
+            res.send({
+                question: {"_id":{"$oid":"61a05902d63cbf8eddaf3ed7"},"prompt":"evaluate (A and B) or (A xor B) if A = 1 and B = 0","type":"MultipleChoice","options":["1","0","neither"],"secret":{"correctOptions":[{"$numberInt":"0"}]},"topic":"binary algebra","event":"Cybersecurity","showInFeed":true,"showInLibrary":true}
+            })
+        }
+
         if (!userID) {
             res.send({
                 status: false,
