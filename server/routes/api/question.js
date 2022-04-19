@@ -311,35 +311,27 @@ function checkSolution(question, solution) {
             const m = Math.floor(solution.time / 600)
 
             if (question.timed) {
-                if (mistakes == 0) {
-                    message = solution.time ? "No mistakes! Solved in " + m + " minutes " + s + " seconds" : 'No mistakes!'
-                    correct = true
-                    continueQuestion = false
-                }
-                else {
-                    message = "There are some mistakes!"
-                    correct = false
-                    continueQuestion = true
-                }
+                continueQuestion = mistakes > 2
             }
             else {
                 continueQuestion = false
-                if (mistakes == 0) {
-                    message = solution.time ? "No mistakes! Solved in " + m + " minutes " + s + " seconds" : 'No mistakes!'
-                    correct = true
-                }
-                else if (mistakes == 1) {
-                    message = "There is one mistake!"
-                    correct = false
-                }
-                else if (mistakes < 3) {
-                    message = "There are " + mistakes + " mistakes!"
-                    correct = true
-                }
-                else {
-                    message = "There are more than 2 mistakes!"
-                    correct = false
-                }
+            }
+            
+            if (mistakes == 0) {
+                message = solution.time ? "No mistakes! Solved in " + m + " minutes " + s + " seconds" : 'No mistakes!'
+                correct = true
+            }
+            else if (mistakes == 1) {
+                message = "There is one mistake!"
+                correct = false
+            }
+            else if (mistakes < 3) {
+                message = "There are " + mistakes + " mistakes!"
+                correct = true
+            }
+            else {
+                message = "There are more than 2 mistakes!"
+                correct = false
             }
             
             return {
