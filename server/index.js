@@ -34,7 +34,7 @@ const checkJwt = jwt({
     algorithms: [ 'RS256' ]
   });
 
-app.use(checkJwt)
+// app.use(checkJwt)
 
 
 setUp()
