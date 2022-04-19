@@ -1,7 +1,8 @@
 const express = require('express')
 const mongodb = require('mongodb')
-var client = null
-var db = {}
+const jwtAuthz = require('express-jwt-authz')
+let client = null
+let db = {}
 function setUp(DBclient) {
     client = DBclient
     db.questions = client.db('questions').collection('questions0')

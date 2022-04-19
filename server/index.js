@@ -5,16 +5,6 @@ const mongodb = require('mongodb')
 const Vault = require('hashi-vault-js')
 
 const dbSecret = require('./dbSecret.json')
-// const cloudinary = require('cloudinary')
-
-// cloudinary.config({ 
-//     cloud_name: 'alexg', 
-//     api_key: '122511629836931', 
-//     api_secret: 'k76DEeO5oSzuIeh4jSgMi5IxSGo' 
-//   });
-
-// const auth0 = require('./auth0')
-
 
 
 const app = express()
@@ -23,35 +13,28 @@ app.use(bodyParser.json())
 app.use(cors())
 
 const port = process.env.PORT || 5000
-const question = require('./routes/api/question')
 
-// const { set } = require('express/lib/application')
+//JWT - Authentification
+// Create middleware for checking the JWT
+const jwt = require('express-jwt')
+const jwksRsa = require('jwks-rsa')
 
-// require('dotenv').config();
-// console.log(process.env)
+const checkJwt = jwt({
+    // Dynamically provide a signing key based on the kid in the header and the signing keys provided by the JWKS endpoint
+    secret: jwksRsa.expressJwtSecret({
+      cache: true,
+      rateLimit: true,
+      jwksRequestsPerMinute: 5,
+      jwksUri: `https://dev-hmqllj6v.us.auth0.com/.well-known/jwks.json`
+    }),
+  
+    // Validate the audience and the issuer
+    audience: 'https://scioapp.gulko.net/api',
+    issuer: 'https://dev-hmqllj6v.us.auth0.com/',
+    algorithms: [ 'RS256' ]
+  });
 
-// //Auth0
-// const { auth } = require('express-openid-connect');
-
-// const config = {
-//   authRequired: false,
-//   auth0Logout: true,
-//   idpLogout: true,
-//   secret: 'ioiiiofiodfikofjioiwifwefgrrgeg',
-//   baseURL: 'http://localhost:5000',
-//   clientID: 'ajMa8kR5GH2Ac8Q46g0SepdvxGolGncr',
-//   issuerBaseURL: 'https://dev-hmqllj6v.us.auth0.com'
-
-// };
-
-// // auth router attaches /login, /logout, and /callback routes to the baseURL
-// app.use(auth(config));
-
-// // req.isAuthenticated is provided from the auth router
-// app.get('/', (req, res) => {
-//   res.send(req.oidc.isAuthenticated() ? 'Logged in' : 'Logged out');
-// });
-
+app.use(checkJwt)
 
 
 setUp()
@@ -73,6 +56,10 @@ async function setUp() {
     }
 }
 //api routing
+
+const question = require('./routes/api/question')
+const user = require('./routes/api/user')
+
 app.use('/api/question/', question.router)
-app.use('/api/question/submitSolution', question.router)
+app.use('/api/user/', user.router)
 
