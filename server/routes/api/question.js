@@ -233,7 +233,7 @@ router.post('/mockSubmitSolution', async (req, res) => {
     }
 })
 
-router.post('/addQuestion', async (req, res) => {
+router.post('/addQuestion', jwtAuthz(['add:db']), async (req, res) => {
     try {
         const question = req.body.question
         question.submittedBy = req.body.userID
@@ -345,14 +345,14 @@ function checkSolution(question, solution) {
     return false
 }
 
-async function parseUser(userID) {
-    const user = await db.users.findOne({auth0ID: userID})
-    if (user) {
-        return user
-    }
-    else {
-        await db.users.insertOne({
-            auth0ID: userID,
-        })
-    }
-}
+// async function parseUser(userID) {
+//     const user = await db.users.findOne({auth0ID: userID})
+//     if (user) {
+//         return user
+//     }
+//     else {
+//         await db.users.insertOne({
+//             auth0ID: userID,
+//         })
+//     }
+// }
