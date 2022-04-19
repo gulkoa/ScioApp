@@ -34,27 +34,28 @@ const checkJwt = jwt({
     algorithms: [ 'RS256' ]
   });
 
-// app.use(checkJwt)
-
-
-setUp()
-async function setUp() {
-    try {
-        const DBClient = await mongodb.MongoClient.connect(`mongodb+srv://${dbSecret.username}:${dbSecret.password}@cluster0.ofpmb.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`, {useNewUrlParser: true})
-        question.setUp(DBClient)
-        app.listen(port, () => console.log(`The server is up! Listening at ${port}`))
-
-        if (process.env.NODE_ENV === 'production') {
-            app.use(express.static(__dirname + '/public'))
-            app.get(/.*/, (req, res) => {
-                res.sendFile(__dirname + '/public/index.html')
-            })
-        }
+  
+  
+  setUp()
+  async function setUp() {
+      try {
+          const DBClient = await mongodb.MongoClient.connect(`mongodb+srv://${dbSecret.username}:${dbSecret.password}@cluster0.ofpmb.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`, {useNewUrlParser: true})
+          question.setUp(DBClient)
+          app.listen(port, () => console.log(`The server is up! Listening at ${port}`))
+          
+          if (process.env.NODE_ENV === 'production') {
+              app.use(express.static(__dirname + '/public'))
+              app.get(/.*/, (req, res) => {
+                  res.sendFile(__dirname + '/public/index.html')
+                })
+            }
             // auth0.authorize()
-    } catch (error) {
-        console.log('Error! \n' + error)
+        } catch (error) {
+            console.log('Error! \n' + error)
+        }
     }
-}
+
+app.use(checkJwt.unless({method: ['GET']}))
 //api routing
 
 const question = require('./routes/api/question')
