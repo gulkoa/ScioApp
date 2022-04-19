@@ -172,6 +172,7 @@ router.post('/loadQuestion', async (req, res) => {
 router.post('/submitSolution', async (req, res) => {
     try {
         const {questionID, userID, solution} = req.body
+        console.debug(req.body)
         if (!userID) {
             res.send({
                 status: false,
