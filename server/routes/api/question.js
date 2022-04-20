@@ -238,6 +238,9 @@ router.post('/addQuestion', jwtAuthz(['add:db']), async (req, res) => {
         const question = req.body.question
         question.submittedBy = req.body.userID
         question.submittedTimeStamp = Date.now()
+        if (question.type == 'Cryptography' && !question.secret.ciphertext) {
+            throw new Error('There was an error with ciphertext! Please report to Alex')
+        }
         await db.questions.insertOne(question)
         res.json({
             status: true,
