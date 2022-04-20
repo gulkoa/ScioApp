@@ -238,10 +238,10 @@ router.post('/addQuestion', jwtAuthz(['add:db']), async (req, res) => {
         const question = req.body.question
         question.submittedBy = req.body.userID
         question.submittedTimeStamp = Date.now()
-        if (question.type == 'Cryptography' && !question.secret.ciphertext) {
+        if (question.type == 'Cryptography' && !question.secret.plaintext) {
             res.json({
                 status: false,
-                message: "Ciphertext error! Please report to Alex"
+                message: "Plaintext error! Please report to Alex"
             })
             return
         }
