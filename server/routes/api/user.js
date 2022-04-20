@@ -7,7 +7,7 @@ const axios = require('axios')
 let accessToken = ''
 const tenant = 'https://dev-hmqllj6v.us.auth0.com/'
 
-const permissions = ['add:db', 'read:db', 'propose:db']
+const permissions = ['read:db', 'add:db', 'propose:db', 'read:reports', 'manage:db', 'manage:ec', 'manage:c', 'manage:coaches']
 
 for (let permission of permissions) {
     router.post('/permission/' + permission.replace(':', '-'), jwtAuthz([permission] ), async (req, res) => {

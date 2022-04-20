@@ -4,7 +4,13 @@
         "topics": [
             {"name": "binary algebra"},
             {"name": "cryptography"},
-            {"name": "hashing algorithms"}
+            {"name": "hashing algorithms"},
+            {"name": "hashing algorithms"},
+            {"name": "vulnerability analysis"},
+            {"name": "encryption and decryption"},
+            {"name": "history of internet"},
+            {"name": "web page anatomy"}
+
         ]
     },
     {
