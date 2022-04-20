@@ -32,7 +32,7 @@ router.post('/getRoles', async (req, res) => {
         .then(response => {
             res.json({
                 status: true,
-                response: response.data
+                // response: response.data
             })
         })
         .catch(error => {

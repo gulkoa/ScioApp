@@ -12,7 +12,7 @@ function setUp(DBclient) {
 
 const router = express.Router()
 
-router.post('/loadFeed', async (req, res) => {
+router.post('/loadFeed', jwtAuthz(['read:db']), async (req, res) => {
     try {
         const {event, topicsNames, userID} = req.body
         if (!userID) {
@@ -68,7 +68,7 @@ router.post('/loadFeed', async (req, res) => {
     }
 })
 
-router.post('/loadLibrary', async (req, res) => {
+router.post('/loadLibrary', jwtAuthz(['read:db']), async (req, res) => {
     try {
         const {event, topicsNames, userID} = req.body
         if (!userID) {
@@ -126,7 +126,7 @@ router.post('/loadLibrary', async (req, res) => {
 
 })
 
-router.post('/loadQuestion', async (req, res) => {
+router.post('/loadQuestion', jwtAuthz(['read:db']), async (req, res) => {
     try {
         const {questionID, userID} = req.body
 
@@ -169,7 +169,7 @@ router.post('/loadQuestion', async (req, res) => {
 
 
 
-router.post('/submitSolution', async (req, res) => {
+router.post('/submitSolution', jwtAuthz(['read:db']), async (req, res) => {
     try {
         const {questionID, userID, solution} = req.body
         console.debug(req.body)
