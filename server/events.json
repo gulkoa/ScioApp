@@ -40,6 +40,16 @@
         ]
     },
     {
+        "name": "Ornithology",
+        "topics": [
+            {"name": "current events"},
+            {"name": "diseases"},
+            {"name": "skull/bones id"},
+            {"name": "differences between birds and mammal systems"},
+            {"name": "distinguishing behaviors/characteristics"}
+        ]
+    },
+    {
         "name": "Mockology",
         "topics": [
             {"name": "this is"},
