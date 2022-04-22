@@ -287,7 +287,8 @@ function checkSolution(question, solution) {
             return {
                 continue: false,
                 correct,
-                message: correct ? solution.time ? `Correct! Solved in ${Math.floor(solution.time / 600)} minutes ${Math.round(solution.time % 600 / 10)} seconds` : 'Correct!' : "Incorrect" + " (Correct answer: " + question.secret.correctOptions.map(i => question.options[i]) + ")"
+                message: correct ? solution.time ? `Correct! Solved in ${Math.floor(solution.time / 600)} minutes ${Math.round(solution.time % 600 / 10)} seconds` : 'Correct!' : "Incorrect",
+                correctAnswer: question.secret.correctOptions.map(i => question.options[i]).join(', ')
             }
 
         case 'Cryptography':
@@ -345,7 +346,8 @@ function checkSolution(question, solution) {
                 mistakes,
                 correct,
                 continue: continueQuestion,
-                message
+                message,
+                correctAnswer: question.secret.plaintext
             }
 
     }
