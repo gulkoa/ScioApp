@@ -8,11 +8,12 @@ function setUp(DBclient) {
     db.questions = client.db('questions').collection('questions0')
     db.submissions = client.db('submissions').collection('submissions0')
     db.users = client.db('users').collection('users')
+    db.ranking = client.db('users').collection('ranking')
 }
 
 const router = express.Router()
-
-router.post('/loadFeed', jwtAuthz(['read:db']), async (req, res) => {
+//jwtAuthz(['read:db'])
+router.post('/loadFeed', async (req, res) => {
     try {
         const {event, topicsNames, userID} = req.body
         if (!userID) {
@@ -67,8 +68,8 @@ router.post('/loadFeed', jwtAuthz(['read:db']), async (req, res) => {
         })
     }
 })
-
-router.post('/loadLibrary', jwtAuthz(['read:db']), async (req, res) => {
+//jwtAuthz(['read:db'])
+router.post('/loadLibrary', async (req, res) => {
     try {
         const {event, topicsNames, userID} = req.body
         if (!userID) {
@@ -105,9 +106,6 @@ router.post('/loadLibrary', jwtAuthz(['read:db']), async (req, res) => {
                 else {
                     question.solved = false
                 }
-                const submissions = await db.submissions.find({questionID: question._id.toString(), "checkReport.correct": true}).toArray()
-                if (submissions && submissions.length > 0)
-                    question.averageTime = submissions.reduce((summ, sub) => summ + sub.userSolution.time, 0) / submissions.length
                 delete question.secret
             }
             res.json({
@@ -125,8 +123,8 @@ router.post('/loadLibrary', jwtAuthz(['read:db']), async (req, res) => {
     }
 
 })
-
-router.post('/loadQuestion', jwtAuthz(['read:db']), async (req, res) => {
+//jwtAuthz(['read:db'])
+router.post('/loadQuestion', async (req, res) => {
     try {
         const {questionID, userID} = req.body
 
@@ -135,6 +133,12 @@ router.post('/loadQuestion', jwtAuthz(['read:db']), async (req, res) => {
             console.log('test question requested')
             res.send({
                 question: {"_id":{"$oid":"61a05902d63cbf8eddaf3ed7"},"prompt":"evaluate (A and B) or (A xor B) if A = 1 and B = 0","type":"MultipleChoice","options":["1","0","neither"],"secret":{"correctOptions":[{"$numberInt":"0"}]},"topic":"binary algebra","event":"Cybersecurity","showInFeed":true,"showInLibrary":true}
+            })
+        }
+
+        if (questionID == 'oreo') {
+            res.send({
+                question: {"prompt":"","type":"MultipleChoice","options":["1","0","neither"], "topic":"Nabisco","event":"Golden"}
             })
         }
 
@@ -168,11 +172,11 @@ router.post('/loadQuestion', jwtAuthz(['read:db']), async (req, res) => {
 })
 
 
-
-router.post('/submitSolution', jwtAuthz(['read:db']), async (req, res) => {
+//jwtAuthz(['read:db'])
+router.post('/submitSolution', async (req, res) => {
     try {
         const {questionID, userID, solution} = req.body
-        console.debug(req.body)
+        // console.debug(req.body)
         if (!userID) {
             res.send({
                 status: false,
@@ -184,6 +188,18 @@ router.post('/submitSolution', jwtAuthz(['read:db']), async (req, res) => {
 
         const checkReport = checkSolution(question, solution)
         // console.log(solution, checkReport)
+
+        //save score
+        if (checkReport.correct) {
+            let oldSubmission = await db.submissions.findOne({questionID: questionID, userID})
+            if (!oldSubmission) {
+                const timeZScore = question.standardDeviation && question.standardDeviation != 0 ? (solution.time - question.averageTime) / question.standardDeviation : 1
+                console.log(timeZScore)
+                const score = timeZScore < 0 ? -timeZScore * 1000 : 1000
+                console.log(score)
+                await db.ranking.updateOne({userID, event: question.event}, {$inc: {score: score}}, {upsert: true})
+            }
+        }
     
         //post submision to db
         const submission = {
@@ -195,8 +211,42 @@ router.post('/submitSolution', jwtAuthz(['read:db']), async (req, res) => {
             event: question.event,
             checkReport
         }
-        if (!checkReport.continue)
+        if (!checkReport.continue) {
             await db.submissions.insertOne(submission)
+            //find the average and standard deviation time for this question
+
+            // const allQuestions = await db.questions.find().toArray()
+            // for (let q of allQuestions) {
+            //     await db.submissions.aggregate([
+            //         {$match: {questionID: q._id.toString(), "checkReport.correct": true}},
+            //         {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
+            //     ]).toArray((err, result) => {
+            //         if (err) {
+            //             console.error(err)
+            //         }
+            //         else {
+            //             if (result.length > 0) {
+            //                 db.questions.updateOne({_id: q._id}, {$set: {averageTime: result[0].averageTime}, $set: {standardDeviation: result[0].standardDeviation}})
+            //             }
+            //         }
+            //     })
+            //     console.log('Updated question ' + q.prompt)
+            // }
+
+            await db.submissions.aggregate([
+                {$match: {questionID: questionID, "checkReport.correct": true}},
+                {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
+            ]).toArray((err, result) => {
+                if (err) {
+                    console.error(err)
+                }
+                else {
+                    if (result.length > 0) {
+                        db.questions.updateOne({_id: new mongodb.ObjectId(questionID)}, {$set: {averageTime: result[0].averageTime}, $set: {standardDeviation: result[0].standardDeviation}})
+                    }
+                }
+            })
+        }
     
         res.json({
             status: true,
@@ -273,6 +323,60 @@ router.get('/getEvents', async (req, res) => {
         })
     }
 })
+
+router.post('/getRanking', jwtAuthz(['read:db']), async (req, res) => {
+    try {
+        const scoreConstant = 1000
+        const {event, userID} = req.body
+        const submissions = await db.submissions.find({event}).toArray()
+        let scores = []
+        submissions.forEach(async submission => {
+            let userIndex = scores.findIndex(score => score.userID == submission.userID)
+            if (userIndex < 0) {
+                let user = {
+                    userID: submission.userID,
+                    score: 0,
+                    scoredQuestions: []
+                }
+                scores.push(user)
+                userIndex = scores.length - 1
+            }
+            
+            // console.log(userIndex)
+            if (submission.checkReport.correct) {
+                //relative time error. If negative, it means the user got the question faster than average
+                const question = await db.questions.findOne({_id: new mongodb.ObjectId(submission.questionID)})
+                let timeError = (submission.userSolution.time - question.averageTime) / question.averageTime
+                timeError = timeError == 0 ? 1 : timeError
+                console.log(timeError)
+                const questionScore = scoreConstant * timeError < 0 ? -1/timeError : 1
+                scores[userIndex].score += questionScore
+                console.log(scores[userIndex].score)
+                // scores[userIndex].scoredQuestions.push(submission.questionID)
+            }
+        })
+        // console.log(scores.length)
+        //take a square root. Just for fun
+        scores.forEach(score => {
+            score.score = Math.round(Math.sqrt(score.score))
+            console.log(score.score)
+            
+        })
+        //sort by score
+        scores = scores.sort((a, b) => { b.score - a.score })
+        res.json({
+            status: true,
+            users: scores
+        })
+    } catch(err) {
+        console.error(err)
+        res.json({
+            status: false,
+            message: "Unknown server error"
+        })
+    }
+})
+
 
 
 module.exports = { router, setUp }
