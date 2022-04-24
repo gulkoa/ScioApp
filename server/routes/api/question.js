@@ -197,7 +197,7 @@ router.post('/submitSolution', async (req, res) => {
                 console.log(timeZScore)
                 const score = timeZScore < 0 ? (-timeZScore/2 + 1) * 1000 : 1000
                 console.log(score)
-                await db.ranking.updateOne({userID, event: question.event}, {$inc: {score: score}}, {upsert: true})
+                await db.ranking.updateOne({userID, event: question.event}, {$inc: {score: score, lastUpdated: new Date()}}, {upsert: true})
             }
         }
     
