@@ -193,7 +193,7 @@ router.post('/submitSolution', async (req, res) => {
         if (checkReport.correct) {
             let oldSubmission = await db.submissions.findOne({questionID: questionID, userID})
             if (!oldSubmission) {
-                const timeZScore = question.standardDeviation && question.standardDeviation != 0 ? (solution.time - question.averageTime) / question.standardDeviation : 0
+                const timeZScore = question.standardDeviation && question.standardDeviation != 0 ? (solution.time - question.averageTime) / question.standardDeviation : -0.5
                 console.log(timeZScore)
                 const score = timeZScore < 0 ? (-timeZScore/2 + 1) * 1000 : 1000
                 console.log(score)
