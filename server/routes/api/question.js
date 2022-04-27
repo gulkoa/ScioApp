@@ -242,7 +242,7 @@ router.post('/submitSolution', async (req, res) => {
                 }
                 else {
                     if (result.length > 0) {
-                        db.questions.updateOne({_id: new mongodb.ObjectId(questionID)}, {$set: {averageTime: result[0].averageTime}, $set: {standardDeviation: result[0].standardDeviation}})
+                        db.questions.updateOne({_id: new mongodb.ObjectId(questionID)}, {$set: {averageTime: result[0].averageTime, standardDeviation: result[0].standardDeviation}})
                     }
                 }
             })
