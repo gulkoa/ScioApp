@@ -107,6 +107,25 @@ router.post('/loadLibrary', async (req, res) => {
                     question.solved = false
                 }
                 delete question.secret
+
+
+                // await db.submissions.aggregate([
+                //     {$match: {questionID: question._id, "checkReport.correct": true}},
+                //     {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
+                // ]).toArray((err, result) => {
+                //     if (err) {
+                //         console.error(err)
+                //     }
+                //     else {
+                //         if (result.length > 0) {
+                //             db.questions.updateOne({_id: new mongodb.ObjectId(question_id)}, {$set: {averageTime: result[0].averageTime, standardDeviation: result[0].standardDeviation}})
+                //         }
+                //     }
+                // })
+
+
+
+
             }
             res.json({
                 status: true,
@@ -194,10 +213,11 @@ router.post('/submitSolution', async (req, res) => {
             let oldSubmission = await db.submissions.findOne({questionID: questionID, userID})
             if (!oldSubmission) {
                 const timeZScore = question.standardDeviation && question.standardDeviation != 0 ? (solution.time - question.averageTime) / question.standardDeviation : -0.5
-                console.log(timeZScore)
+                // console.log(timeZScore)
                 const score = timeZScore < 0 ? (-timeZScore/2 + 1) * 1000 : 1000
-                console.log(score)
-                await db.ranking.updateOne({userID, event: question.event}, {$inc: {score: score, lastUpdated: new Date()}}, {upsert: true})
+                const date = new Date()
+                // console.log(score)
+                await db.ranking.updateOne({userID, event: question.event}, {$inc: {score: score}}, {$set: {lastUpdated: date}}, {upsert: true})
             }
         }
     
