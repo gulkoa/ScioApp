@@ -110,19 +110,19 @@ router.post('/loadLibrary', async (req, res) => {
                 delete question.secret
 
 
-                await db.submissions.aggregate([
-                    {$match: {questionID: question._id.toString(), "checkReport.correct": true}},
-                    {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
-                ]).toArray((err, result) => {
-                    if (err) {
-                        console.error(err)
-                    }
-                    else {
-                        if (result.length > 0) {
-                            db.questions.updateOne({_id: question._id}, {$set: {averageTime: result[0].averageTime, standardDeviation: result[0].standardDeviation}})
-                        }
-                    }
-                })
+                // await db.submissions.aggregate([
+                //     {$match: {questionID: question._id.toString(), "checkReport.correct": true}},
+                //     {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
+                // ]).toArray((err, result) => {
+                //     if (err) {
+                //         console.error(err)
+                //     }
+                //     else {
+                //         if (result.length > 0) {
+                //             db.questions.updateOne({_id: question._id}, {$set: {averageTime: result[0].averageTime, standardDeviation: result[0].standardDeviation}})
+                //         }
+                //     }
+                // })
 
 
 
