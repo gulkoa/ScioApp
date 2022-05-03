@@ -1,6 +1,7 @@
 const express = require('express')
 const mongodb = require('mongodb')
 const jwtAuthz = require('express-jwt-authz')
+const axios = require('axios')
 let client = null
 let db = {}
 function setUp(DBclient) {
@@ -455,9 +456,79 @@ router.post('/getRanking', jwtAuthz(['read:db']), async (req, res) => {
 })
 
 
+router.post('/MADTON', jwtAuthz(['read:db']), async (req, res) => {
+    try {
+        const { userID } = req.body
+        const quotes = await axios.get("https://type.fit/api/quotes")
+        const quote = quotes.data[Math.floor(Math.random() * quotes.data.length)]
+
+        const question = {
+            prompt: `Solve this quote by ${quote.author}`,
+            ciphertext: generateAristocrat(quote.text.toUpperCase()),
+            secret: {
+                plaintext: quote.text.toUpperCase(),
+            },
+            type: "Cryptography",
+            timed: true,
+            event: 'Codebusters'
+        }
+        console.log(quotes.data.length)
+        res.json({
+            status: true,
+            question
+        })
+    }
+    catch(err) {
+        console.error(err)
+        res.json({
+            status: false,
+            message: "Unknown server error"
+        })
+    }
+})
+
+
+
 
 module.exports = { router, setUp }
 
+function generateAristocrat(plaintext) {
+    const alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+    let randomAlphabet = shuffle([...alphabet])
+    while (alphabet.findIndex((l, i) => l == randomAlphabet[i]) >= 0) {
+        randomAlphabet = shuffle(randomAlphabet)
+        console.log(alphabet)
+    }
+
+    let ciphertext = plaintext.split('').map(l => {
+        if (alphabet.indexOf(l) >= 0) {
+            let index = alphabet.findIndex(a => a == l)
+            return randomAlphabet[index]
+        }
+        else {
+            return l
+        }
+    }).join('')
+    return ciphertext
+}
+
+function shuffle(array) {
+    let currentIndex = array.length,  randomIndex;
+  
+    // While there remain elements to shuffle.
+    while (currentIndex != 0) {
+  
+      // Pick a remaining element.
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex--;
+  
+      // And swap it with the current element.
+      [array[currentIndex], array[randomIndex]] = [
+        array[randomIndex], array[currentIndex]];
+    }
+  
+    return array;
+  }
 
 function checkSolution(question, solution) {
     let correct
