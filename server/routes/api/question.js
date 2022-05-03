@@ -9,6 +9,7 @@ function setUp(DBclient) {
     db.submissions = client.db('submissions').collection('submissions0')
     db.users = client.db('users').collection('users')
     db.ranking = client.db('users').collection('ranking')
+    db.tests = client.db('tests').collection('tests')
 }
 
 const router = express.Router()
@@ -92,7 +93,7 @@ router.post('/loadLibrary', async (req, res) => {
                 if (submission) {
                     question.solved = true
                     question.solvedDate = submission.timestamp
-                    question.solvedDaysAgo = new Date().getDate() - new Date(submission.timestamp).getDate()
+                    question.solvedDaysAgo = Math.floor((new Date().getTime() - new Date(submission.timestamp).getTime()) / (1000 * 60 * 60 * 24))
                     if (question.solvedDaysAgo == 0) {
                         question.solvedDateMessage = "today"
                     }
@@ -109,19 +110,19 @@ router.post('/loadLibrary', async (req, res) => {
                 delete question.secret
 
 
-                // await db.submissions.aggregate([
-                //     {$match: {questionID: question._id, "checkReport.correct": true}},
-                //     {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
-                // ]).toArray((err, result) => {
-                //     if (err) {
-                //         console.error(err)
-                //     }
-                //     else {
-                //         if (result.length > 0) {
-                //             db.questions.updateOne({_id: new mongodb.ObjectId(question_id)}, {$set: {averageTime: result[0].averageTime, standardDeviation: result[0].standardDeviation}})
-                //         }
-                //     }
-                // })
+                await db.submissions.aggregate([
+                    {$match: {questionID: question._id.toString(), "checkReport.correct": true}},
+                    {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
+                ]).toArray((err, result) => {
+                    if (err) {
+                        console.error(err)
+                    }
+                    else {
+                        if (result.length > 0) {
+                            db.questions.updateOne({_id: question._id}, {$set: {averageTime: result[0].averageTime, standardDeviation: result[0].standardDeviation}})
+                        }
+                    }
+                })
 
 
 
@@ -189,6 +190,42 @@ router.post('/loadQuestion', async (req, res) => {
         })
     }
 })
+
+router.post('/loadTest', async (req, res) => {
+    try {
+        const {testID, userID} = req.body
+        if (!userID) {
+            res.send({
+                status: false,
+                message: "UserID is missing in request"
+            })
+            return
+        }
+        const test = await db.tests.findOne({_id: mongodb.ObjectId(testID)})
+        for (question of test.questions) {
+            question.question = await db.questions.findOne({_id: mongodb.ObjectId(question.questionID)})
+        }
+        if (!test) {
+            res.json({status: false, message: "Test not found"})
+        }
+        // console.log(questions.length)
+        else {
+            res.json({
+                status: true,
+                test
+            })
+        }
+    }
+    catch (err) {
+        console.error(err)
+        res.json({
+            status: false,
+            message: "Unknown server error"
+        })
+    }
+})
+
+
 
 
 //jwtAuthz(['read:db'])
@@ -328,6 +365,26 @@ router.post('/addQuestion', jwtAuthz(['add:db']), async (req, res) => {
         })
     }
 })
+
+router.post('/addTest', jwtAuthz(['add:db']), async (req, res) => {
+    try {
+        const test = req.body.test
+        test.submittedBy = req.body.userID
+        test.submittedTimeStamp = Date.now()
+        await db.tests.insertOne(test)
+        res.json({
+            status: true,
+            message: "Test successfully added to the database!"
+        })
+    } catch(err) {
+        console.error(err)
+        res.json({
+            status: false,
+            message: "Unknown server error"
+        })
+    }
+})
+
 
 router.get('/getEvents', async (req, res) => {
     try {
