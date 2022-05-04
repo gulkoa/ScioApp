@@ -458,21 +458,35 @@ router.post('/getRanking', jwtAuthz(['read:db']), async (req, res) => {
 
 router.post('/MADTON', jwtAuthz(['read:db']), async (req, res) => {
     try {
-        const { userID } = req.body
+        const { userID, topic } = req.body
         const quotes = await axios.get("https://type.fit/api/quotes")
         const quote = quotes.data[Math.floor(Math.random() * quotes.data.length)]
+        let ciphertext = ''
+        switch(topic) {
+            case 'aristocrat':
+                ciphertext = generateAristocrat(quote.text.toUpperCase())
+                break
+            case 'patristocrat':
+                ciphertext = generatePatristocrat(quote.text.toUpperCase())
+                break
+
+            default:
+                ciphertext = generateAristocrat(quote.text.toUpperCase())
+                break
+        }
 
         const question = {
             prompt: `Solve this quote by ${quote.author}`,
-            ciphertext: generateAristocrat(quote.text.toUpperCase()),
+            ciphertext,
             secret: {
                 plaintext: quote.text.toUpperCase(),
             },
             type: "Cryptography",
             timed: true,
-            event: 'Codebusters'
+            event: 'Codebusters',
+            topic
         }
-        console.log(quotes.data.length)
+        // console.log(quotes.data.length)
         res.json({
             status: true,
             question
@@ -492,12 +506,21 @@ router.post('/MADTON', jwtAuthz(['read:db']), async (req, res) => {
 
 module.exports = { router, setUp }
 
+function generatePatristocrat(plaintext) {
+    const aristocrat = generateAristocrat(plaintext)
+    let ciphertext = aristocrat.replace(/[^A-Z]/g, '')
+    for (let i = 5; i < ciphertext.length; i+=6) {
+        ciphertext = ciphertext.slice(0, i) + ' ' + ciphertext.slice(i)
+    }
+    return ciphertext
+}
+
 function generateAristocrat(plaintext) {
     const alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
     let randomAlphabet = shuffle([...alphabet])
     while (alphabet.findIndex((l, i) => l == randomAlphabet[i]) >= 0) {
         randomAlphabet = shuffle(randomAlphabet)
-        console.log(alphabet)
+        //console.log(alphabet)
     }
 
     let ciphertext = plaintext.split('').map(l => {
