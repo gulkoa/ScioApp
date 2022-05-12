@@ -624,6 +624,15 @@ function checkSolution(question, solution) {
                 message,
                 correctAnswer: question.secret.plaintext
             }
+        
+        case 'Field':
+            correct = question.secret.correctAnswers.findIndex(v => v.toLowerCase() == solution.answer.toLowerCase()) >= 0
+            return {
+                continue: false,
+                correct,
+                message: correct ? solution.time ? `Correct! Solved in ${Math.floor(solution.time / 600)} minutes ${Math.round(solution.time % 600 / 10)} seconds` : 'Correct!' : "Incorrect",
+                correctAnswer: question.secret.correctAnswers.join(', ')
+            }
 
     }
     return false
