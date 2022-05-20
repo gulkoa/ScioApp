@@ -2,6 +2,7 @@ const express = require('express')
 const mongodb = require('mongodb')
 const jwtAuthz = require('express-jwt-authz')
 const axios = require('axios')
+const jwt = require('express-jwt')
 let client = null
 let db = {}
 function setUp(DBclient) {
@@ -501,6 +502,43 @@ router.post('/MADTON', jwtAuthz(['read:db']), async (req, res) => {
     }
 })
 
+router.post('/encrypt', jwtAuthz(['read:db']), async (req, res) => {
+    try {
+        let { userID, topic, plaintext } = req.body
+        let ciphertext = ''
+        switch(topic) {
+            case 'aristocrats':
+            case 'timed aristocrats':
+                ciphertext = generateAristocrat(plaintext.toUpperCase())
+                break
+            case 'patristocrats':
+                ciphertext = generatePatristocrat(plaintext.toUpperCase())
+                plaintext = plaintext.replace(/[^A-Z]/g, '')
+                for (let i = 5; i < plaintext.length; i+=6) {
+                    plaintext = plaintext.slice(0, i) + ' ' + plaintext.slice(i)
+                }
+                break
+            default:
+                res.json({
+                    status: false,
+                    message: "Unsupported topic"
+                })
+                return
+        }
+        res.json({
+            status: true,
+            ciphertext,
+            plaintext
+        })
+    }
+    catch(err) {
+        console.error(err)
+        res.json({
+            status: false,
+            message: "Unknown server error"
+        })
+    }
+})
 
 
 
@@ -582,10 +620,10 @@ function checkSolution(question, solution) {
             else
                 mistakes = key.length
 
-            console.debug(key)
-            console.debug(solution)
-            console.debug(key.text == solution)
-            console.debug(mistakes)
+            // console.debug(key)
+            // console.debug(solution)
+            // console.debug(key.text == solution)
+            // console.debug(mistakes)
 
             let message = " "
             let continueQuestion = false

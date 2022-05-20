@@ -1,0 +1,11 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "47",
+            "database": "C:\\Users\\alexg\\Documents\\code\\47-copy\\Solution47\\Database\\database47.sql"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
+}
