@@ -12,6 +12,7 @@ function setUp(DBclient) {
     db.users = client.db('users').collection('users')
     db.ranking = client.db('users').collection('ranking')
     db.tests = client.db('tests').collection('tests')
+    db.testSubmissions = client.db('tests').collection('submissions')
 }
 
 const router = express.Router()
@@ -125,6 +126,8 @@ router.post('/loadLibrary', async (req, res) => {
                 //         }
                 //     }
                 // })
+                // if (question.solution)
+                //     db.questions.updateOne({_id: question._id}, {$unset: {solution: ""}})
 
 
 
@@ -204,19 +207,19 @@ router.post('/loadTest', async (req, res) => {
             return
         }
         const test = await db.tests.findOne({_id: mongodb.ObjectId(testID)})
-        for (question of test.questions) {
-            question.question = await db.questions.findOne({_id: mongodb.ObjectId(question.questionID)})
-        }
         if (!test) {
             res.json({status: false, message: "Test not found"})
+            return
+        }
+        for (question of test.questions) {
+            // console.log(question)
+            question.question = await db.questions.findOne({_id: mongodb.ObjectId(question.questionID)})
         }
         // console.log(questions.length)
-        else {
-            res.json({
-                status: true,
-                test
-            })
-        }
+        res.json({
+            status: true,
+            test
+        })
     }
     catch (err) {
         console.error(err)
@@ -228,7 +231,59 @@ router.post('/loadTest', async (req, res) => {
 })
 
 
-
+router.post('/loadTests', async (req, res) => {
+    try {
+        const {event, userID} = req.body
+        if (!userID) {
+            res.send({
+                status: false,
+                message: "UserID is missing in request"
+            })
+            return
+        }
+        let tests = await db.tests.find({event}).toArray()
+        console.log(tests.length)
+        if (tests.length == 0) {
+            res.json({status: false, message: "No tests found"})
+        }
+        else {
+            for (let test of tests) {
+                let submission = await db.testSubmissions.find({testID: test._id.toString(), userID}, {sort: {timestamp: -1}}).limit(1).toArray()
+                submission = submission[0]
+                // console.log(submission)
+                if (submission) {
+                    test.solved = true
+                    test.solvedDate = submission.timestamp
+                    test.solvedDaysAgo = Math.floor((new Date().getTime() - new Date(submission.timestamp).getTime()) / (1000 * 60 * 60 * 24))
+                    if (test.solvedDaysAgo == 0) {
+                        test.solvedDateMessage = "today"
+                    }
+                    else if (test.solvedDaysAgo == 1) {
+                        test.solvedDateMessage = "yesterday"
+                    }
+                    else {
+                        test.solvedDateMessage = test.solvedDaysAgo + " days ago"
+                    }
+                }
+                else {
+                    test.solved = false
+                }
+                // delete test.secret
+            }
+            res.json({
+                status: true,
+                tests
+            })
+        }
+    }
+    catch (err) {
+        console.error(err)
+        res.json({
+            status: false,
+            message: "Unknown server error"
+        })
+    }
+})
 
 //jwtAuthz(['read:db'])
 router.post('/submitSolution', async (req, res) => {
@@ -386,6 +441,45 @@ router.post('/addTest', jwtAuthz(['add:db']), async (req, res) => {
         })
     }
 })
+
+router.post('/submitTest', async (req, res) => {
+    try {
+        const {testID, userID, testSolutions} = req.body
+        // console.debug(req.body)
+        if (!userID) {
+            res.send({
+                status: false,
+                message: "UserID is missing in request"
+                })
+                return
+        }
+        let test = await db.tests.findOne({_id: new mongodb.ObjectId(testID)})
+        let score = 0
+        let reports = []
+        for (let i = 0; i < test.questions.length; i++) {
+            let q = await db.questions.findOne({_id: new mongodb.ObjectId(test.questions[i].questionID)})
+            // console.log(testSolutions[i])
+            let checkReport = checkSolution(q, testSolutions[i])
+            if (checkReport.correct) {
+                score += test.questions[i].points
+            }
+            reports.push(checkReport)
+        }
+        console.log(score)
+        res.json({
+            status: true,
+            score,
+            reports
+        })
+    } catch(err) {
+        console.error(err)
+        res.json({
+            status: false,
+            message: "Unknown server error"
+        })
+    }
+})
+
 
 
 router.get('/getEvents', async (req, res) => {
