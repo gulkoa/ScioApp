@@ -32,30 +32,33 @@ const checkJwt = jwt({
 
 
 
+// Static files (must be before catch-all)
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(__dirname + '/public'))
+}
+
+//api routing
+const question = require('./routes/api/question')
+const user = require('./routes/api/user')
+
+app.use('/api/question/', checkJwt, question.router)
+app.use('/api/user/', checkJwt, user.router)
+
+// SPA catch-all (must be last)
+if (process.env.NODE_ENV === 'production') {
+    app.get('*', (req, res) => {
+        res.sendFile(__dirname + '/public/index.html')
+    })
+}
+
 setUp()
 async function setUp() {
     try {
         const DBClient = await mongodb.MongoClient.connect(`mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@cluster0.ofpmb.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`, { useNewUrlParser: true })
         question.setUp(DBClient)
         app.listen(port, () => console.log(`The server is up! Listening at ${port}`))
-
-        if (process.env.NODE_ENV === 'production') {
-            app.use(express.static(__dirname + '/public'))
-            app.get(/.*/, (req, res) => {
-                res.sendFile(__dirname + '/public/index.html')
-            })
-        }
     } catch (error) {
         console.log('Error! \n' + error)
     }
 }
-
-// app.use(checkJwt.unless({ method: ['GET'] }))
-//api routing
-
-const question = require('./routes/api/question')
-const user = require('./routes/api/user')
-
-app.use('/api/question/', checkJwt, question.router)
-app.use('/api/user/', checkJwt, user.router)
 
