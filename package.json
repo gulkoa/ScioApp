@@ -4,8 +4,8 @@
   "description": "An online testing application",
   "main": "index.js",
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "nodemon server/index.js",
+    "start": "node --env-file=.env server/index.js",
+    "dev": "nodemon --env-file=.env server/index.js",
     "commit": "git add . && git commit -m \"update\"",
     "push": "git push heroku master",
     "commit and push": "git add . && git commit -m \"update\" && git push heroku master"

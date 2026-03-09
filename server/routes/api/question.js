@@ -555,18 +555,27 @@ router.post('/MADTON', jwtAuthz(['read:db']), async (req, res) => {
     try {
         const { userID, topic } = req.body
         const quotes = await axios.get("https://type.fit/api/quotes")
-        const quote = quotes.data[Math.floor(Math.random() * quotes.data.length)]
+        let quote = quotes.data[Math.floor(Math.random() * quotes.data.length)]
         let ciphertext = ''
+        let plaintext = ''
         switch(topic) {
             case 'aristocrat':
-                ciphertext = generateAristocrat(quote.text.toUpperCase())
+                plaintext = quote.text.toUpperCase()
+                ciphertext = generateAristocrat(plaintext)
                 break
             case 'patristocrat':
-                ciphertext = generatePatristocrat(quote.text.toUpperCase())
+                plaintext = quote.text.toUpperCase()
+                ciphertext = generatePatristocrat(plaintext)
                 break
-
+            case 'xenocrypt':
+                const spanishQuote = await fetchSpanishQuote()
+                plaintext = normalizeSpanish(spanishQuote.text)
+                ciphertext = generateAristocrat(plaintext)
+                quote = spanishQuote
+                break
             default:
-                ciphertext = generateAristocrat(quote.text.toUpperCase())
+                plaintext = quote.text.toUpperCase()
+                ciphertext = generateAristocrat(plaintext)
                 break
         }
 
@@ -574,7 +583,7 @@ router.post('/MADTON', jwtAuthz(['read:db']), async (req, res) => {
             prompt: `Solve this quote by ${quote.author}`,
             ciphertext,
             secret: {
-                plaintext: quote.text.toUpperCase(),
+                plaintext,
             },
             type: "Cryptography",
             timed: true,
@@ -612,6 +621,10 @@ router.post('/encrypt', jwtAuthz(['read:db']), async (req, res) => {
                     plaintext = plaintext.slice(0, i) + ' ' + plaintext.slice(i)
                 }
                 break
+            case 'xenocrypt':
+                plaintext = normalizeSpanish(plaintext)
+                ciphertext = generateAristocrat(plaintext)
+                break
             default:
                 res.json({
                     status: false,
@@ -637,6 +650,15 @@ router.post('/encrypt', jwtAuthz(['read:db']), async (req, res) => {
 
 
 module.exports = { router, setUp }
+
+async function fetchSpanishQuote() {
+    const res = await axios.get("https://quotes-api-three.vercel.app/api/randomquote?language=es")
+    return { text: res.data.quote, author: res.data.author }
+}
+
+function normalizeSpanish(text) {
+    return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z ]/gi, '').toUpperCase()
+}
 
 function generatePatristocrat(plaintext) {
     const aristocrat = generateAristocrat(plaintext)
