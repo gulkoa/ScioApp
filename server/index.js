@@ -45,18 +45,17 @@ async function setUp() {
                 res.sendFile(__dirname + '/public/index.html')
             })
         }
-        // auth0.authorize()
     } catch (error) {
         console.log('Error! \n' + error)
     }
 }
 
-app.use(checkJwt.unless({ method: ['GET'] }))
+// app.use(checkJwt.unless({ method: ['GET'] }))
 //api routing
 
 const question = require('./routes/api/question')
 const user = require('./routes/api/user')
 
-app.use('/api/question/', question.router)
-app.use('/api/user/', user.router)
+app.use('/api/question/', checkJwt, question.router)
+app.use('/api/user/', checkJwt, user.router)
 
