@@ -24,7 +24,7 @@
             <button v-if="!test.reply" class="btn btn-primary" @click="submit()"> Submit </button>
             <p>Questions answered: {{questionsAnswered.length}}/{{test.questions.length}}</p>
 
-            <p class="text-center h4"> {{messages.submittionReply}} </p>
+            <p class="text-center h4"> {{messages.submissionReply}} </p>
 
             <div class="m-3" v-if="displayReply && !displayCorrectAnswers">
                 <p class="h2 text-center">Your score: {{test.reply.score}}</p>

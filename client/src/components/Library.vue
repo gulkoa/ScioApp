@@ -162,7 +162,7 @@ export default {
             if (this.selectedTopics.length === 0) {
                 this.selectedTopicsTitle = 'No topics selected'
             }
-            else if (this.selectedTopics.length == this.selectedEvent.topics.length) {
+            else if (this.selectedTopics.length === this.selectedEvent.topics.length) {
                 this.selectedTopicsTitle = 'All topics selected'
             }
             else {

@@ -51,6 +51,9 @@ export default {
             loading: false,
             messages: {
                 loadQuestion: ''
+            },
+            permissions: {
+                manage: false,
             }
         }
     },

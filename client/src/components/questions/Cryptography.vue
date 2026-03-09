@@ -66,7 +66,7 @@ export default {
 
     
     this.loadLetters()
-    if (this.question.frequencyTableType != 'None') {
+    if (this.question.frequencyTableType !== 'None') {
       this.loadLetterCount()
     }
     
@@ -148,19 +148,19 @@ export default {
         }
 
         letterField.onkeydown = (e) => {
-            if (e.code == 'ArrowRight') {
+            if (e.code === 'ArrowRight') {
               //select next field
               this.fields[(thisIndex+1)%this.fields.length].focus()
               //disable default action
               e.preventDefault()
             }
-            else if (e.code == 'ArrowLeft') {
+            else if (e.code === 'ArrowLeft') {
               //select previous field
               this.fields[(thisIndex-1+this.fields.length)%this.fields.length].focus()
               //disable default action
               e.preventDefault()
             }
-            else if (e.code == 'Backspace') {
+            else if (e.code === 'Backspace') {
               //empty this field
               letterField.value = ''
               this.updateSolutionText()
@@ -170,16 +170,16 @@ export default {
               e.preventDefault()
 
             }
-            else if (e.code == 'Enter') {
+            else if (e.code === 'Enter') {
               //submit solution
               this.submit()
             }
-            else if (e.code == 'Delete') {
+            else if (e.code === 'Delete') {
               //clear field
               letterField.value = ''
               this.updateSolutionText()
             }
-            else if (e.code == 'ControlRight') {
+            else if (e.code === 'ControlRight') {
               //cancel solution
               this.autoJumpToggle()
             }
@@ -212,12 +212,12 @@ export default {
 
       const substituteRow = document.createElement('tr')
 
-      if (!this.question.frequencyTableType || this.question.frequencyTableType == 'Regular') {
+      if (!this.question.frequencyTableType || this.question.frequencyTableType === 'Regular') {
         table.appendChild(letterRow)
         table.appendChild(coutRow)
         table.appendChild(substituteRow)
       }
-      else if (this.question.frequencyTableType == 'K2') {
+      else if (this.question.frequencyTableType === 'K2') {
         table.appendChild(substituteRow)
         table.appendChild(letterRow)
         table.appendChild(coutRow)
@@ -232,7 +232,7 @@ export default {
 
         const countCell = document.createElement('td')
         countCell.className = 'countCell border'
-        countCell.textContent = this.question.ciphertext.split('').reduce((a, b) => a + (b == letter? 1 : 0), 0)
+        countCell.textContent = this.question.ciphertext.split('').reduce((a, b) => a + (b === letter? 1 : 0), 0)
         coutRow.appendChild(countCell)
 
         const substituteCell = document.createElement('td')

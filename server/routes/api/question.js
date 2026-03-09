@@ -35,7 +35,7 @@ router.post('/loadFeed', async (req, res) => {
             return
         }
         const questions = await db.questions.find({event, topic: {$in: topicsNames}, showInFeed: true}).toArray()
-        if (questions.length == 0) {
+        if (questions.length === 0) {
             res.json({status: false, message: "No questions found"})
             return
         }
@@ -85,7 +85,7 @@ router.post('/loadLibrary', async (req, res) => {
         }
         let questions = await db.questions.find({event, topic: {$in: topicsNames}, showInLibrary: true}).toArray()
         // console.log(questions.length)
-        if (questions.length == 0) {
+        if (questions.length === 0) {
             res.json({status: false, message: "No questions found"})
         }
         else {
@@ -97,10 +97,10 @@ router.post('/loadLibrary', async (req, res) => {
                     question.solved = true
                     question.solvedDate = submission.timestamp
                     question.solvedDaysAgo = Math.floor((new Date().getTime() - new Date(submission.timestamp).getTime()) / (1000 * 60 * 60 * 24))
-                    if (question.solvedDaysAgo == 0) {
+                    if (question.solvedDaysAgo === 0) {
                         question.solvedDateMessage = "today"
                     }
-                    else if (question.solvedDaysAgo == 1) {
+                    else if (question.solvedDaysAgo === 1) {
                         question.solvedDateMessage = "yesterday"
                     }
                     else {
@@ -154,14 +154,14 @@ router.post('/loadQuestion', async (req, res) => {
         const {questionID, userID} = req.body
 
 
-        if (questionID == 'aurora1445') {
             console.log('test question requested')
+        if (questionID === 'aurora1445') {
             res.send({
                 question: {"_id":{"$oid":"61a05902d63cbf8eddaf3ed7"},"prompt":"evaluate (A and B) or (A xor B) if A = 1 and B = 0","type":"MultipleChoice","options":["1","0","neither"],"secret":{"correctOptions":[{"$numberInt":"0"}]},"topic":"binary algebra","event":"Cybersecurity","showInFeed":true,"showInLibrary":true}
             })
         }
 
-        if (questionID == 'oreo') {
+        if (questionID === 'oreo') {
             res.send({
                 question: {"prompt":"","type":"MultipleChoice","options":["1","0","neither"], "topic":"Nabisco","event":"Golden"}
             })
@@ -211,8 +211,8 @@ router.post('/loadTest', async (req, res) => {
             res.json({status: false, message: "Test not found"})
             return
         }
-        for (question of test.questions) {
             // console.log(question)
+        for (let question of test.questions) {
             question.question = await db.questions.findOne({_id: mongodb.ObjectId(question.questionID)})
         }
         // console.log(questions.length)
@@ -243,7 +243,7 @@ router.post('/loadTests', async (req, res) => {
         }
         let tests = await db.tests.find({event}).toArray()
         console.log(tests.length)
-        if (tests.length == 0) {
+        if (tests.length === 0) {
             res.json({status: false, message: "No tests found"})
         }
         else {
@@ -255,10 +255,10 @@ router.post('/loadTests', async (req, res) => {
                     test.solved = true
                     test.solvedDate = submission.timestamp
                     test.solvedDaysAgo = Math.floor((new Date().getTime() - new Date(submission.timestamp).getTime()) / (1000 * 60 * 60 * 24))
-                    if (test.solvedDaysAgo == 0) {
+                    if (test.solvedDaysAgo === 0) {
                         test.solvedDateMessage = "today"
                     }
-                    else if (test.solvedDaysAgo == 1) {
+                    else if (test.solvedDaysAgo === 1) {
                         test.solvedDateMessage = "yesterday"
                     }
                     else {
@@ -306,12 +306,11 @@ router.post('/submitSolution', async (req, res) => {
         if (checkReport.correct) {
             let oldSubmission = await db.submissions.findOne({questionID: questionID, userID})
             if (!oldSubmission) {
-                const timeZScore = question.standardDeviation && question.standardDeviation != 0 ? (solution.time - question.averageTime) / question.standardDeviation : -0.5
                 // console.log(timeZScore)
+                const timeZScore = question.standardDeviation && question.standardDeviation !== 0 ? (solution.time - question.averageTime) / question.standardDeviation : -0.5
                 const score = timeZScore < 0 ? (-timeZScore/2 + 1) * 1000 : 1000
                 const date = new Date()
-                // console.log(score)
-                await db.ranking.updateOne({userID, event: question.event}, {$inc: {score: score}}, {$set: {lastUpdated: date}}, {upsert: true})
+                await db.ranking.updateOne({userID, event: question.event}, {$inc: {score: score}, $set: {lastUpdated: date}}, {upsert: true})
             }
         }
     
@@ -402,7 +401,7 @@ router.post('/addQuestion', jwtAuthz(['add:db']), async (req, res) => {
         const question = req.body.question
         question.submittedBy = req.body.userID
         question.submittedTimeStamp = Date.now()
-        if (question.type == 'Cryptography' && !question.secret.plaintext) {
+        if (question.type === 'Cryptography' && !question.secret.plaintext) {
             res.json({
                 status: false,
                 message: "Plaintext error! Please report to Alex"
@@ -535,8 +534,7 @@ router.post('/getRanking', jwtAuthz(['read:db']), async (req, res) => {
             console.log(score.score)
             
         })
-        //sort by score
-        scores = scores.sort((a, b) => { b.score - a.score })
+        scores.sort((a, b) => b.score - a.score)
         res.json({
             status: true,
             users: scores
@@ -672,14 +670,14 @@ function generatePatristocrat(plaintext) {
 function generateAristocrat(plaintext) {
     const alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
     let randomAlphabet = shuffle([...alphabet])
-    while (alphabet.findIndex((l, i) => l == randomAlphabet[i]) >= 0) {
+    while (alphabet.findIndex((l, i) => l === randomAlphabet[i]) >= 0) {
         randomAlphabet = shuffle(randomAlphabet)
         //console.log(alphabet)
     }
 
     let ciphertext = plaintext.split('').map(l => {
         if (alphabet.indexOf(l) >= 0) {
-            let index = alphabet.findIndex(a => a == l)
+            let index = alphabet.findIndex(a => a === l)
             return randomAlphabet[index]
         }
         else {
@@ -693,7 +691,7 @@ function shuffle(array) {
     let currentIndex = array.length,  randomIndex;
   
     // While there remain elements to shuffle.
-    while (currentIndex != 0) {
+    while (currentIndex !== 0) {
   
       // Pick a remaining element.
       randomIndex = Math.floor(Math.random() * currentIndex);
@@ -754,11 +752,11 @@ function checkSolution(question, solution) {
                 continueQuestion = false
             }
             
-            if (mistakes == 0) {
+            if (mistakes === 0) {
                 message = solution.time ? "No mistakes! Solved in " + m + " minutes " + s + " seconds" : 'No mistakes!'
                 correct = true
             }
-            else if (mistakes == 1) {
+            else if (mistakes === 1) {
                 message = "There is one mistake!"
                 correct = false
             }
@@ -780,7 +778,7 @@ function checkSolution(question, solution) {
             }
         
         case 'Field':
-            correct = question.secret.correctAnswers.findIndex(v => v.toLowerCase() == solution.answer.toLowerCase()) >= 0
+            correct = question.secret.correctAnswers.findIndex(v => v.toLowerCase() === solution.answer.toLowerCase()) >= 0
             return {
                 continue: false,
                 correct,

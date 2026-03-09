@@ -2,8 +2,6 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
 const mongodb = require('mongodb')
-const Vault = require('hashi-vault-js')
-
 
 const app = express()
 //middleware

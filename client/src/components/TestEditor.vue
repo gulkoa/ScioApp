@@ -116,7 +116,7 @@ export default {
     methods: {
         async addQuestion(questionID) {
             try {
-                if (this.questions.find(q => q._id == questionID)) {
+                if (this.questions.find(q => q._id === questionID)) {
                     this.messages.saveTest = 'This question is already in the test'
                     return
                 }
@@ -134,9 +134,7 @@ export default {
             this.test.event = event.name
             this.selectedEvent = event
         },
-        questionMounted() {
-
-        },
+        questionMounted() {},
         deleteQuestion(index) {
             this.test.questions.splice(index, 1)
             this.questions.splice(index, 1)

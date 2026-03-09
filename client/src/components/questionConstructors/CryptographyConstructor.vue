@@ -60,17 +60,17 @@ export default {
 
             this.$emit('update')
 
-            if (this.question.ciphertext.length == 0) {
+            if (this.question.ciphertext.length === 0) {
                 this.messages.inputs = 'Please enter ciphertext'
-            } else if (this.question.secret.plaintext.length == 0) {
+            } else if (this.question.secret.plaintext.length === 0) {
                 this.messages.inputs = 'Please enter plaintext'
-            } else if (this.question.ciphertext.length != this.question.secret.plaintext.length) {
+            } else if (this.question.ciphertext.length !== this.question.secret.plaintext.length) {
                 this.messages.inputs = 'Ciphertext and plaintext must be the same length'
             } else {
                 this.messages.inputs = ''
             }
 
-            if (this.question.ciphertext.length > 0 && this.question.secret.plaintext.length > 0 && this.question.ciphertext.length == this.question.secret.plaintext.length) {
+            if (this.question.ciphertext.length > 0 && this.question.secret.plaintext.length > 0 && this.question.ciphertext.length === this.question.secret.plaintext.length) {
                 this.question.checklist.constructor = true
             }
             else
@@ -87,7 +87,7 @@ export default {
 
         async encrypt() {
             try {
-                let res = await ServerTalker.encrypt(this.question.secret.plaintext, this.question.topic, this.$auth.user.id, await this.$auth.getTokenSilently())
+                let res = await ServerTalker.encrypt(this.question.secret.plaintext, this.question.topic, this.$auth.user.sub, await this.$auth.getTokenSilently())
                 this.question.ciphertext = res.ciphertext
                 document.getElementById('ciphertext').value = res.ciphertext
                 this.question.secret.plaintext = res.plaintext

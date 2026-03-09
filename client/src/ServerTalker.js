@@ -26,13 +26,13 @@ class ServerTalker {
             .catch((err)=> {
                 reject(err);
             })
-            
+
         });
     }
 
     static async loadQuestion(questionID, userID, accessToken) {
         return new Promise ((resolve,reject) => {
-            if (questionID == 'aurora1445') {
+            if (questionID === 'aurora1445') {
                 resolve({"_id":{"$oid":"61a05902d63cbf8eddaf3ed7"},"prompt":"evaluate (A and B) or (A xor B) if A = 1 and B = 0","type":"MultipleChoice","options":["1","0","neither"],"secret":{"correctOptions":[{"$numberInt":"0"}]},"topic":"binary algebra","event":"Cybersecurity","showInFeed":true,"showInLibrary":true})
                 return
             }
@@ -58,7 +58,7 @@ class ServerTalker {
             .catch((err)=> {
                 reject(err);
             })
-            
+
         });
     }
 
