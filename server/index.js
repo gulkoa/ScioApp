@@ -4,8 +4,6 @@ const cors = require('cors')
 const mongodb = require('mongodb')
 const Vault = require('hashi-vault-js')
 
-const dbSecret = require('./dbSecret.json')
-
 
 const app = express()
 //middleware
@@ -39,7 +37,7 @@ const checkJwt = jwt({
 setUp()
 async function setUp() {
     try {
-        const DBClient = await mongodb.MongoClient.connect(`mongodb+srv://${dbSecret.username}:${dbSecret.password}@cluster0.ofpmb.mongodb.net/?appName=Cluster0`, { useNewUrlParser: true })
+        const DBClient = await mongodb.MongoClient.connect(`mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@cluster0.ofpmb.mongodb.net/?appName=Cluster0`, { useNewUrlParser: true })
         question.setUp(DBClient)
         app.listen(port, () => console.log(`The server is up! Listening at ${port}`))
 
