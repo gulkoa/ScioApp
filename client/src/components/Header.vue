@@ -15,6 +15,7 @@
           <li><a href="/question/editor" class="nav-link px-2 link-secondary">Editor</a></li>
           <li><a href="/test/library" class="nav-link px-2 link-secondary">Tests</a></li>
           <li><a href="/MADTON" class="nav-link px-2 link-secondary">MADTON</a></li>
+          <li><a href="/ranking" class="nav-link px-2 link-secondary">Leaderboard</a></li>
           <li v-if="isAdmin"><a href="/admin" class="nav-link px-2 link-danger">Admin</a></li>
         </ul>
 
