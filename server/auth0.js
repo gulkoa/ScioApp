@@ -3,9 +3,14 @@ const request = require("request")
 
 function authorize() {
     let options = { method: 'POST',
-    url: 'https://dev-hmqllj6v.us.auth0.com/oauth/token',
+    url: `https://${process.env.AUTH0_DOMAIN}/oauth/token`,
     headers: { 'content-type': 'application/json' },
-    body: '{"client_id":"a8vVCnqUZtmRswdMgWTYTYQ8ywIXXZWx","client_secret":"8qohR019rWiJ-Vzsz6Ntio-Y0RYYkfDtvdG8UGA8vsp4G25OHKhZt7RChZiSAqXr","audience":"https://dev-hmqllj6v.us.auth0.com/api/v2/","grant_type":"client_credentials"}' };
+    body: JSON.stringify({
+        client_id: process.env.AUTH0_MGMT_CLIENT_ID,
+        client_secret: process.env.AUTH0_MGMT_CLIENT_SECRET,
+        audience: `https://${process.env.AUTH0_DOMAIN}/api/v2/`,
+        grant_type: 'client_credentials'
+    }) };
 
     request(options, function (error, response, body) {
     if (error) throw new Error(error);

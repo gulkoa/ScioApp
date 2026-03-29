@@ -22,7 +22,7 @@ router.post('/getRoles', async (req, res) => {
 
         accessToken = await getToken()
         const userId = req.body.userId
-        axios.get(`https://dev-hmqllj6v.us.webtask.run/adf6e2f2b84784b57522e3b19dfc9201/api/users/${userId}/`, {
+        axios.get(`https://${process.env.AUTH0_DOMAIN.replace('.auth0.com', '')}.webtask.run/${process.env.AUTH0_AUTHZ_EXT_TOKEN}/api/users/${userId}/`, {
             headers: {
                 Authorization: 'Bearer ' + accessToken
             }
