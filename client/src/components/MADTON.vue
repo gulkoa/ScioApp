@@ -58,7 +58,7 @@ export default {
     async created() {
         this.questionID = this.prop
         try {
-            const response = await ServerTalker.MADTON(this.selectedTopic, this.userID, await this.$auth.getTokenSilently())
+            const response = await ServerTalker.MADTON(this.selectedTopic)
             this.question = response.question
             this.question.buttons = true
             this.displayQuestion = true
@@ -77,7 +77,7 @@ export default {
         async loadNewQuestion() {
             try {
                 this.displayQuestion = false
-                const response = await ServerTalker.MADTON(this.selectedTopic, this.userID, await this.$auth.getTokenSilently())
+                const response = await ServerTalker.MADTON(this.selectedTopic)
                 this.question = response.question
                 this.messages.submittionReply = ''
                 this.question.buttons = true

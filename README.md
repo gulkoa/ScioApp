@@ -10,7 +10,8 @@ A web-based testing and quiz platform built for [Science Olympiad](https://sciol
 - **Rankings** — leaderboard tracking across users
 - **Question & test library** — browse, search, and manage all content
 - **MADTON** — dedicated cryptogram/codebusters practice mode
-- **Auth0 authentication** — secure login with role-based permissions
+- **Email/password auth** — custom JWT-based authentication with email verification
+- **Admin panel** — manage users, roles, and permissions from the web UI
 
 ### Supported Science Olympiad Events
 
@@ -23,10 +24,11 @@ Cybersecurity, Codebusters, WiFi Lab, Detector Building, Ornithology, and more.
 | Layer    | Technology                        |
 | -------- | --------------------------------- |
 | Frontend | Vue 2, Axios, TinyMCE            |
-| Backend  | Node.js, Express                  |
+| Backend  | Node.js, Express, JWT             |
 | Database | MongoDB Atlas                     |
-| Auth     | Auth0 (SPA SDK + JWT)             |
-| Hosting  | Heroku                            |
+| Auth     | Custom (bcrypt + jsonwebtoken)    |
+| Email    | Resend                            |
+| Hosting  | Render                            |
 
 ---
 
@@ -35,7 +37,7 @@ Cybersecurity, Codebusters, WiFi Lab, Detector Building, Ornithology, and more.
 - **Node.js** (v16 or later recommended)
 - **npm**
 - A **MongoDB Atlas** account (free tier works)
-- An **Auth0** account (free tier works)
+- A **Resend** account for email verification (free tier: 3,000 emails/month)
 
 ---
 
@@ -43,89 +45,22 @@ Cybersecurity, Codebusters, WiFi Lab, Detector Building, Ornithology, and more.
 
 1. Go to [mongodb.com/atlas](https://www.mongodb.com/atlas) and create a free account
 2. Create a new **Shared Cluster** (the free M0 tier is fine)
-3. Under **Database Access**, create a database user with a username and password — save these, you'll need them for the `.env` file
-4. Under **Network Access**, add your IP address (or `0.0.0.0/0` for development)
-5. Click **Connect** on your cluster, choose **Connect your application**, and note the connection string — it will look like:
-   ```
-   mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/...
-   ```
-   You only need the **username** and **password** — the connection string is already configured in the app
+3. Under **Database Access**, create a database user — save the username and password
+4. Under **Network Access**, add your IP (or `0.0.0.0/0` for development)
 
-The app will automatically create these databases and collections on first use:
-- `questions` db → `questions0` collection
-- `submissions` db → `submissions0` collection
-- `users` db → `users` collection, `ranking` collection
-- `tests` db → `tests` collection, `submissions` collection
+The app creates its databases and collections automatically on first use.
 
 ---
 
-## 2. Auth0 Setup
+## 2. Resend Setup (email verification)
 
-### Create an Auth0 account and tenant
-
-1. Go to [auth0.com](https://auth0.com) and sign up for a free account
-2. A tenant is created automatically during signup (e.g. `dev-xxxxx.us.auth0.com`)
-
-### Create an API
-
-1. Go to **Applications > APIs** in the Auth0 dashboard
-2. Click **Create API**
-3. Set:
-   - **Name:** `ScioApp API` (or whatever you like)
-   - **Identifier (Audience):** `https://scioapp.gulko.net/api` (or your own URL — this is a logical identifier, not a real endpoint)
-   - **Signing Algorithm:** RS256
-4. Under the **Permissions** tab, add these permissions:
-
-   | Permission        | Description                      |
-   | ----------------- | -------------------------------- |
-   | `read:db`         | Read questions and data          |
-   | `add:db`          | Add new questions                |
-   | `propose:db`      | Propose questions for review     |
-   | `read:reports`    | Read submission reports          |
-   | `manage:db`       | Full database management         |
-   | `manage:ec`       | Manage event configuration       |
-   | `manage:c`        | Manage content                   |
-   | `manage:coaches`  | Manage coach accounts            |
-
-### Create a Single Page Application
-
-1. Go to **Applications > Applications**
-2. Click **Create Application**
-3. Set:
-   - **Name:** `ScioApp Client`
-   - **Type:** Single Page Application
-4. In the **Settings** tab, note down:
-   - **Domain** (e.g. `dev-xxxxx.us.auth0.com`)
-   - **Client ID** (e.g. `wIImCZrd...`)
-5. Under **Application URIs**, set:
-   - **Allowed Callback URLs:** `http://localhost:8080, https://your-production-url.com`
-   - **Allowed Logout URLs:** `http://localhost:8080, https://your-production-url.com`
-   - **Allowed Web Origins:** `http://localhost:8080, https://your-production-url.com`
-6. Save changes
-
-### Create a Machine-to-Machine Application (for role management)
-
-1. Go to **Applications > Applications**
-2. Click **Create Application**
-3. Set:
-   - **Name:** `ScioApp Management`
-   - **Type:** Machine to Machine
-4. When prompted to authorize an API, select the **Auth0 Authorization Extension API** (if you have the Authorization Extension installed) or the **Auth0 Management API**
-5. In the **Settings** tab, note down:
-   - **Client ID** (this is your `AUTH0_MGMT_CLIENT_ID`)
-   - **Client Secret** (this is your `AUTH0_MGMT_CLIENT_SECRET`)
-
-### Assign permissions to users
-
-1. Go to **User Management > Roles**
-2. Create roles (e.g. `Admin`, `Coach`, `Student`) and assign the API permissions from above
-3. Assign roles to users under **User Management > Users**
+1. Go to [resend.com](https://resend.com) and create a free account
+2. Get your **API key** from the dashboard
+3. Optionally verify your domain to send from a custom address (otherwise emails come from `noreply@resend.dev`)
 
 ---
 
 ## 3. Environment Variables
-
-### Server `.env` (project root)
 
 Create a `.env` file in the project root:
 
@@ -134,77 +69,60 @@ Create a `.env` file in the project root:
 MONGODB_USERNAME=your_mongodb_username
 MONGODB_PASSWORD=your_mongodb_password
 
-# Auth0
-AUTH0_DOMAIN=dev-xxxxx.us.auth0.com
-AUTH0_AUDIENCE=https://scioapp.gulko.net/api
-AUTH0_MGMT_CLIENT_ID=your_m2m_client_id
-AUTH0_MGMT_CLIENT_SECRET=your_m2m_client_secret
-AUTH0_AUTHZ_AUDIENCE=urn:auth0-authz-api
+# JWT secret — generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+JWT_SECRET=your_random_secret_here
+
+# Resend (email verification)
+RESEND_API_KEY=re_xxxxx
+EMAIL_FROM=ScioApp <noreply@yourdomain.com>
+
+# App URL (used in verification email links)
+APP_URL=http://localhost:8080
 
 # Server
 PORT=5000
 NODE_ENV=development
 ```
 
-### Client `.env.local` (`client/` directory)
-
-Create a `.env.local` file inside the `client/` folder:
-
-```env
-VUE_APP_AUTH0_DOMAIN=dev-xxxxx.us.auth0.com
-VUE_APP_AUTH0_CLIENT_ID=your_spa_client_id
-VUE_APP_AUTH0_AUDIENCE=https://scioapp.gulko.net/api
-```
-
-> Vue CLI automatically loads `VUE_APP_*` variables from `.env.local` at build time.
-
-> **Never commit `.env` or `.env.local` files.** They are already in `.gitignore`.
+> Never commit the `.env` file — it's already in `.gitignore`.
 
 ---
 
 ## 4. Install & Run
 
-### Install dependencies
-
 ```bash
-# Server dependencies (from project root)
+# Install server deps
 npm install
 
-# Client dependencies
-cd client
-npm install
-cd ..
+# Install client deps
+cd client && npm install && cd ..
 ```
-
-### Run in development mode
 
 Open **two terminals**:
 
-**Terminal 1 — Backend** (runs on port 5000):
-
+**Terminal 1 — Backend** (port 5000):
 ```bash
 npm run dev
 ```
 
-**Terminal 2 — Frontend** (runs on port 8080, proxies API calls to port 5000):
-
+**Terminal 2 — Frontend** (port 8080, proxies API to 5000):
 ```bash
-cd client
-npm run serve
+cd client && npm run serve
 ```
 
-Then open [http://localhost:8080](http://localhost:8080) in your browser.
+Open [http://localhost:8080](http://localhost:8080).
 
-### Build for production
+---
 
-```bash
-cd client
-npm run build
-cd ..
-npm start
-```
+## 5. Create the First Admin User
 
-This builds the Vue SPA into `server/public/` and starts the Express server, which serves both the API and the static frontend.
+1. Register an account through the web UI
+2. Verify your email
+3. In MongoDB Atlas, go to the `users` database > `users` collection
+4. Find your user document and set `"role": "admin"`
+5. Log out and back in — you'll see the Admin link in the header
+
+From there you can manage all other users from the Admin panel.
 
 ---
 
@@ -213,85 +131,63 @@ This builds the Vue SPA into `server/public/` and starts the Express server, whi
 ```
 ScioApp-heroku/
 ├── server/
-│   ├── index.js              # Express entry point, MongoDB connection, JWT setup
-│   ├── events.json           # Event/topic configuration
-│   ├── public/               # Built client assets (generated by npm run build)
+│   ├── index.js                 # Express setup, MongoDB, route mounting
+│   ├── events.json              # Event/topic config
+│   ├── middleware/auth.js       # JWT verify, permission & admin middleware
+│   ├── public/                  # Built client (generated)
 │   └── routes/api/
-│       ├── question.js       # Question CRUD, feed, tests, ranking, MADTON
-│       └── user.js           # Permission checks, Auth0 role management
+│       ├── auth.js              # Register, login, verify, admin user mgmt
+│       └── question.js          # Questions, tests, ranking, MADTON
 ├── client/
-│   ├── vue.config.js         # Build output dir + dev proxy config
-│   ├── .env.local            # Client Auth0 config (not committed)
+│   ├── vue.config.js
 │   └── src/
-│       ├── App.vue           # Root component with path-based routing
-│       ├── auth.js           # Auth0 SPA SDK wrapper (Vue plugin)
-│       ├── ServerTalker.js   # Static API client (axios)
+│       ├── App.vue              # Root component, path-based routing
+│       ├── auth.js              # JWT auth store (Vue plugin)
+│       ├── ServerTalker.js      # API client
 │       └── components/
-│           ├── Feed.vue
-│           ├── Library.vue
-│           ├── Question.vue
-│           ├── QuestionEditor.vue
-│           ├── Test.vue
-│           ├── TestEditor.vue
-│           ├── TestLibrary.vue
-│           ├── Ranking.vue
-│           ├── Profile.vue
-│           ├── MADTON.vue
-│           ├── questions/          # Question type renderers
-│           └── questionConstructors/ # Question type constructors
-├── .env                      # Server env vars (not committed)
-├── .gitignore
-├── package.json              # Server deps & root scripts
-└── build.sh                  # Heroku build script
+│           ├── Login.vue        # Login page
+│           ├── Register.vue     # Registration page
+│           ├── Verify.vue       # Email verification page
+│           ├── Admin.vue        # User/role management panel
+│           ├── Feed.vue, Library.vue, Question.vue, ...
+│           └── questions/       # Question type renderers
+├── .env.example                 # Template for environment variables
+├── package.json
+└── build.sh                     # Render build script
 ```
 
 ---
 
-## Scripts
+## Roles & Permissions
 
-| Command                      | Description                              |
-| ---------------------------- | ---------------------------------------- |
-| `npm run dev`                | Start server with nodemon (hot reload)   |
-| `npm start`                  | Start server in production mode          |
-| `cd client && npm run serve` | Start Vue dev server on port 8080        |
-| `cd client && npm run build` | Build client into `server/public/`       |
-| `cd client && npm run lint`  | Lint client code                         |
-| `npx jest`                   | Run tests                                |
+| Role    | Description                          |
+| ------- | ------------------------------------ |
+| student | Default. Can read and answer questions |
+| coach   | Can add questions and tests          |
+| admin   | Full access + admin panel            |
+
+Permissions: `read:db`, `add:db`, `propose:db`, `read:reports`, `manage:db`, `manage:ec`, `manage:c`, `manage:coaches`
+
+Admins bypass all permission checks. Permissions can be assigned individually per user from the admin panel.
 
 ---
 
-## Deployment (Heroku)
+## Deployment (Render)
 
-1. Make sure all env vars are set as Heroku config vars:
+Set these environment variables in your Render service:
 
-   ```bash
-   heroku config:set MONGODB_USERNAME=...
-   heroku config:set MONGODB_PASSWORD=...
-   heroku config:set AUTH0_DOMAIN=...
-   heroku config:set AUTH0_AUDIENCE=...
-   heroku config:set AUTH0_MGMT_CLIENT_ID=...
-   heroku config:set AUTH0_MGMT_CLIENT_SECRET=...
-   heroku config:set AUTH0_AUTHZ_AUDIENCE=urn:auth0-authz-api
-   heroku config:set NODE_ENV=production
-   ```
+```
+MONGODB_USERNAME=...
+MONGODB_PASSWORD=...
+JWT_SECRET=...
+RESEND_API_KEY=...
+EMAIL_FROM=ScioApp <noreply@yourdomain.com>
+APP_URL=https://your-app.onrender.com
+NODE_ENV=production
+```
 
-   For the client-side Auth0 vars, also set:
-
-   ```bash
-   heroku config:set VUE_APP_AUTH0_DOMAIN=...
-   heroku config:set VUE_APP_AUTH0_CLIENT_ID=...
-   heroku config:set VUE_APP_AUTH0_AUDIENCE=...
-   ```
-
-2. Update your Auth0 application's **Allowed Callback URLs**, **Allowed Logout URLs**, and **Allowed Web Origins** to include your Heroku app URL
-
-3. Deploy:
-
-   ```bash
-   git push heroku master
-   ```
-
-   The included `build.sh` handles installing dependencies and building the client.
+- **Build command:** `./build.sh`
+- **Start command:** `cd server && node index.js`
 
 ---
 

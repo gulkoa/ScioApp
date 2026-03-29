@@ -95,9 +95,8 @@ export default {
 
         this.loading = true
         try {
-            const token = await this.$auth.getTokenSilently()
-            this.events = await ServerTalker.getEvents(token)
-            this.permissions.manage = await ServerTalker.permission(this.userID, token, 'manage:db')
+            this.events = await ServerTalker.getEvents()
+            this.permissions.manage = ServerTalker.hasPermission('manage:db')
             for (let event of this.events)
                 for (let topic of event.topics)
                 topic.checked = true
@@ -128,7 +127,7 @@ export default {
             this.loading = true
             this.questions = []
             try {
-                this.questions = await ServerTalker.loadLibrary(this.selectedEvent.name, this.selectedTopics.map(topic => topic.name) || [], this.userID, await this.$auth.getTokenSilently())
+                this.questions = await ServerTalker.loadLibrary(this.selectedEvent.name, this.selectedTopics.map(topic => topic.name) || [])
                 this.messages.loadQuestion = ''
                 this.$forceUpdate()
             } catch(err) {

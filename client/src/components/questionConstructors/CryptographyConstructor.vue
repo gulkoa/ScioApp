@@ -87,7 +87,7 @@ export default {
 
         async encrypt() {
             try {
-                let res = await ServerTalker.encrypt(this.question.secret.plaintext, this.question.topic, this.$auth.user.sub, await this.$auth.getTokenSilently())
+                let res = await ServerTalker.encrypt(this.question.secret.plaintext, this.question.topic)
                 this.question.ciphertext = res.ciphertext
                 document.getElementById('ciphertext').value = res.ciphertext
                 this.question.secret.plaintext = res.plaintext

@@ -130,10 +130,9 @@ export default {
   },
   async created() {
     try {
-      const token = await this.$auth.getTokenSilently()
-      this.events = await ServerTalker.getEvents(token)
-      this.permissions.add = await ServerTalker.permission(this.userID, token, 'add:db')
-      this.permissions.propose = await ServerTalker.permission(this.userID, token, 'propose:db')
+      this.events = await ServerTalker.getEvents()
+      this.permissions.add = ServerTalker.hasPermission('add:db')
+      this.permissions.propose = ServerTalker.hasPermission('propose:db')
     } catch(err) {
       this.error = err.message
     }
@@ -244,7 +243,7 @@ export default {
 
     async submitMockSolution() {
       try {
-        this.question['reply'] = await ServerTalker.mockSubmitSolution(this.question, this.userID, await this.$auth.getTokenSilently())
+        this.question['reply'] = await ServerTalker.mockSubmitSolution(this.question)
         this.messages.submittionReply = this.question.reply.message
       } catch(err) {
         this.error = err.message
@@ -260,7 +259,7 @@ export default {
       if (this.question.checklist.event && this.question.checklist.topic && this.question.checklist.type && this.question.checklist.constructor && this.question.prompt.length > 0) {
         delete this.question.reply
         delete this.question.solution
-        const reply = await ServerTalker.addQuestion(this.question, this.userID, await this.$auth.getTokenSilently())
+        const reply = await ServerTalker.addQuestion(this.question)
         this.messages.addQuestion = reply.message
         if (reply.status && this.clearAfterAdding) {
           this.question = {

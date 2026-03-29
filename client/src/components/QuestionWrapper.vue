@@ -13,10 +13,10 @@
                     <div class="card p-3 m-1" v-if="messages.submittionReply">
                         <p class="text-center h4"> {{messages.submittionReply}} </p>
                         <div v-if="(question.reply && !question.reply.continue) || (question.buttons)" class="m-auto">
-                            <div v-if="this.question.reply.correct">
+                            <div v-if="question.reply.correct">
                                 <button class="btn btn-success" @click="loadNewQuestion()">Load new question</button>
                             </div>
-                            <div class="m-auto p-2" v-if="!this.question.reply.correct && !displayCorrectAnswer || question.reply.mistakes && question.reply.mistakes && !displayCorrectAnswer> 0">
+                            <div class="m-auto p-2" v-if="!question.reply.correct && !displayCorrectAnswer">
                                 <button class="btn btn-warning m-2" @click="tryAgain()">Try again</button>
                                 <button class="btn btn-success m-2" @click="seeCorrectAnswer()">See correct answer</button>
                                 <button class="btn btn-success" @click="loadNewQuestion()">Load new question</button>
@@ -71,9 +71,9 @@ export default {
         async submit() {
             try {
                 if (!this.mockSubmit)
-                    this.question.reply = await ServerTalker.submitSolution(this.question.solution, this.question._id, this.userID, await this.$auth.getTokenSilently())
+                    this.question.reply = await ServerTalker.submitSolution(this.question.solution, this.question._id)
                 else
-                    this.question.reply = await ServerTalker.mockSubmitSolution(this.question, this.userID, await this.$auth.getTokenSilently())
+                    this.question.reply = await ServerTalker.mockSubmitSolution(this.question)
 
                 if (!this.question.reply.continue) {
                     this.disableQuestion = true

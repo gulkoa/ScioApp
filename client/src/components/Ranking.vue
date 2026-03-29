@@ -36,12 +36,12 @@ export default {
         }
     },
     async mounted() {
-        this.events = await ServerTalker.getEvents(await this.$auth.getTokenSilently())
+        this.events = await ServerTalker.getEvents()
     },
     methods: {
         async selectEvent(event) {
             this.selectedEvent = event.name;
-            const ranking = await ServerTalker.getRanking(this.selectedEvent, this.userID, await this.$auth.getTokenSilently())
+            const ranking = await ServerTalker.getRanking(this.selectedEvent)
             if (ranking.status)
                 this.users = ranking.users
             else {

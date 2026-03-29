@@ -3,12 +3,25 @@
     <div id="pageContent">
     <Header/>
     <div v-if="!$auth.loading">
-      <div v-if="showComponent">
-        <component :is="innerComponent" v-if="$auth.isAuthenticated" :userID="userID" v-bind:prop="prop"></component>
+
+      <!-- Authenticated: show the routed component -->
+      <div v-if="$auth.isAuthenticated && innerComponent">
+        <component :is="innerComponent" :userID="userID" v-bind:prop="prop"></component>
       </div>
-      <div v-else>
-        <p class="text-center fs-3 m-3">You need to be logged in to see this page</p>
+
+      <!-- Public pages (login, register, verify) -->
+      <div v-else-if="isPublicPage">
+        <component :is="innerComponent"></component>
       </div>
+
+      <!-- Not logged in, not on a public page -->
+      <div v-else class="text-center my-5">
+        <h2 class="mb-3">Welcome to ScioApp</h2>
+        <p class="text-muted mb-4">Practice for Science Olympiad with questions, timed tests, and rankings.</p>
+        <a href="/login" class="btn btn-primary btn-lg me-2">Log in</a>
+        <a href="/register" class="btn btn-outline-primary btn-lg">Sign up</a>
+      </div>
+
     </div>
     <div v-else class="lds-ripple"><div></div><div></div></div>
 
@@ -18,7 +31,7 @@
       <p class="m-1">Developed by Alex Gulko for Solon High School Science Olympiad</p>
       <p class="m-1">&copy; {{new Date().getUTCFullYear()}}</p>
     </footer>
-    
+
   </div>
 </template>
 
@@ -34,95 +47,74 @@ import Test from './components/Test.vue'
 import TestEditor from './components/TestEditor.vue'
 import TestLibrary from './components/TestLibrary.vue'
 import MADTON from './components/MADTON.vue'
+import Login from './components/Login.vue'
+import Register from './components/Register.vue'
+import Verify from './components/Verify.vue'
+import Admin from './components/Admin.vue'
+
 export default {
   name: 'App',
   data() {
     return {
       innerComponent: undefined,
-      showComponent: false,
       prop: undefined,
-      userToken: undefined,
+      isPublicPage: false,
     }
   },
   components: {
-    Question,
-    Feed,
-    Header,
-    QuestionEditor,
-    Library,
-    Profile,
-    Ranking,
-    Test,
-    TestEditor,
-    TestLibrary,
-    MADTON,
-  },
-  props: {
-    //component: String,
+    Question, Feed, Header, QuestionEditor, Library, Profile, Ranking,
+    Test, TestEditor, TestLibrary, MADTON, Login, Register, Verify, Admin,
   },
   async mounted() {
+    // Initialize auth (restore session from localStorage)
+    await this.$auth.init()
+
     const path = window.location.pathname.split('/')
     path.splice(0, 1)
-    // console.log(path)
-    //wait until loaded
+
+    // Public pages — accessible without login
+    const publicPages = { 'login': 'Login', 'register': 'Register', 'verify': 'Verify' }
+    if (publicPages[path[0]]) {
+      this.innerComponent = publicPages[path[0]]
+      this.isPublicPage = true
+      return
+    }
+
+    // Everything else requires auth
     switch (path[0]) {
       case '':
         this.innerComponent = 'Feed'
         break
-
-      case 'library':
-        break
-
       case 'question':
-          if(path[1] === 'editor') {
-            this.innerComponent = 'QuestionEditor'
-          } else if (path[1] === 'library') {
-            this.innerComponent = 'Library'
-          } else {
-            this.innerComponent = 'Question'
-            this.prop = path[1]
-          }
-          break
-
+        if (path[1] === 'editor') this.innerComponent = 'QuestionEditor'
+        else if (path[1] === 'library') this.innerComponent = 'Library'
+        else { this.innerComponent = 'Question'; this.prop = path[1] }
+        break
       case 'ranking':
         this.innerComponent = 'Ranking'
         break
-
       case 'profile':
         this.innerComponent = 'Profile'
         break
-
       case 'test':
-        if(path[1] === 'editor') {
-          this.innerComponent = 'TestEditor'
-        } else if (path[1] === 'library') {
-          this.innerComponent = 'TestLibrary'
-        } else {
-          this.innerComponent = 'Test'
-          this.prop = path[1]
-        }
+        if (path[1] === 'editor') this.innerComponent = 'TestEditor'
+        else if (path[1] === 'library') this.innerComponent = 'TestLibrary'
+        else { this.innerComponent = 'Test'; this.prop = path[1] }
         break
-
       case 'MADTON':
         this.innerComponent = 'MADTON'
         break
-
+      case 'admin':
+        this.innerComponent = 'Admin'
+        break
       default:
         this.innerComponent = 'Feed'
         break
     }
-
-    this.showComponent = true
-    // console.log(this.innerComponent)
-  },
-  methods: {
   },
   computed: {
     userID() {
-      if (this.$auth.isAuthenticated) {
-        return this.$auth.user.sub
-      }
-      return null
+      return this.$auth.isAuthenticated ? this.$auth.user.id : null
     },
   }
 }

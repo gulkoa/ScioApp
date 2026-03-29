@@ -33,7 +33,7 @@ export default {
     async created() {
         this.questionID = this.prop
         try {
-            this.question = await ServerTalker.loadQuestion(this.questionID, this.userID, await this.$auth.getTokenSilently())
+            this.question = await ServerTalker.loadQuestion(this.questionID)
             this.displayQuestion = true
             
       } catch(err) {

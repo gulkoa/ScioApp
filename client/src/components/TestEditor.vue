@@ -111,7 +111,7 @@ export default {
     async created() {
         this.test = this.test || {}
         this.questions = this.questions || []
-        this.events = await ServerTalker.getEvents(await this.$auth.getTokenSilently())
+        this.events = await ServerTalker.getEvents()
     },
     methods: {
         async addQuestion(questionID) {
@@ -120,7 +120,7 @@ export default {
                     this.messages.saveTest = 'This question is already in the test'
                     return
                 }
-                const question = await ServerTalker.loadQuestion(questionID, this.userID, await this.$auth.getTokenSilently())
+                const question = await ServerTalker.loadQuestion(questionID)
                 this.questions.push(question)
                 this.test.questions.push({questionID: questionID, timed: question.timed, points: 0})
                 this.questionID = ''
@@ -189,7 +189,7 @@ export default {
             this.$forceUpdate()
         },
         async saveTest() {
-            const response = await ServerTalker.addTest(this.test, this.userID, await this.$auth.getTokenSilently())
+            const response = await ServerTalker.addTest(this.test)
             //parse scores
             this.test.questions.forEach(q => {
                 q.points = parseInt(q.points)

@@ -77,7 +77,7 @@ export default {
     async mounted() {
         //get test
         try {
-            const response = await ServerTalker.loadTest(this.prop, this.userID, await this.$auth.getTokenSilently())
+            const response = await ServerTalker.loadTest(this.prop)
             this.test = response.test
             this.test.solution = {
                 time: 0,
@@ -97,7 +97,7 @@ export default {
                 this.test.solution.solutions.push(q.question.solution)
             })
             try {
-                const reply = await ServerTalker.submitTest(this.test._id, this.test.solution.solutions, this.userID, await this.$auth.getTokenSilently())
+                const reply = await ServerTalker.submitTest(this.test._id, this.test.solution.solutions)
                 this.test.reply = reply
                 this.displayReply = true
                 this.disableQuestions = true

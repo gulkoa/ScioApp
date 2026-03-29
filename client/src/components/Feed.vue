@@ -100,7 +100,7 @@ export default {
   },
   async created() {
     try {
-      this.events = await ServerTalker.getEvents(await this.$auth.getTokenSilently())
+      this.events = await ServerTalker.getEvents()
       for (let event of this.events)
         for (let topic of event.topics)
           topic.checked = true
@@ -116,7 +116,7 @@ export default {
       delete this.question
       this.loading = true
       try {
-        this.question = await ServerTalker.loadFeed(this.selectedEvent.name, this.selectedTopics.map(topic => topic.name), this.userID, await this.$auth.getTokenSilently())
+        this.question = await ServerTalker.loadFeed(this.selectedEvent.name, this.selectedTopics.map(topic => topic.name))
         this.messages.loadQuestion = ''
         this.messages.submittionReply = ''
         this.paused = false

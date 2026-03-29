@@ -1,8 +1,7 @@
 const express = require('express')
 const mongodb = require('mongodb')
-const jwtAuthz = require('express-jwt-authz')
 const axios = require('axios')
-const jwt = require('express-jwt')
+const { requirePermission } = require('../../middleware/auth')
 let client = null
 let db = {}
 function setUp(DBclient) {
@@ -27,19 +26,11 @@ router.post('/loadFeed', async (req, res) => {
             })
             return
         }
-        if (!userID) {
-            res.send({
-                status: false,
-                message: "UserID is missing in request"
-            })
-            return
-        }
         const questions = await db.questions.find({event, topic: {$in: topicsNames}, showInFeed: true}).toArray()
         if (questions.length === 0) {
             res.json({status: false, message: "No questions found"})
             return
         }
-        //console.log(questions.length, Math.floor(Math.random() * questions.length))
         let randomIndex = Math.floor(Math.random() * questions.length)
         let question = questions[randomIndex]
         while(questions.length > 0) {
@@ -84,15 +75,14 @@ router.post('/loadLibrary', async (req, res) => {
             return
         }
         let questions = await db.questions.find({event, topic: {$in: topicsNames}, showInLibrary: true}).toArray()
-        // console.log(questions.length)
         if (questions.length === 0) {
             res.json({status: false, message: "No questions found"})
+            return
         }
         else {
             for (let question of questions) {
                 let submission = await db.submissions.find({questionID: question._id.toString(), userID}, {sort: {timestamp: -1}}).limit(1).toArray()
                 submission = submission[0]
-                // console.log(submission)
                 if (submission) {
                     question.solved = true
                     question.solvedDate = submission.timestamp
@@ -111,27 +101,6 @@ router.post('/loadLibrary', async (req, res) => {
                     question.solved = false
                 }
                 delete question.secret
-
-
-                // await db.submissions.aggregate([
-                //     {$match: {questionID: question._id.toString(), "checkReport.correct": true}},
-                //     {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
-                // ]).toArray((err, result) => {
-                //     if (err) {
-                //         console.error(err)
-                //     }
-                //     else {
-                //         if (result.length > 0) {
-                //             db.questions.updateOne({_id: question._id}, {$set: {averageTime: result[0].averageTime, standardDeviation: result[0].standardDeviation}})
-                //         }
-                //     }
-                // })
-                // if (question.solution)
-                //     db.questions.updateOne({_id: question._id}, {$unset: {solution: ""}})
-
-
-
-
             }
             res.json({
                 status: true,
@@ -154,17 +123,18 @@ router.post('/loadQuestion', async (req, res) => {
         const {questionID, userID} = req.body
 
 
-            console.log('test question requested')
         if (questionID === 'aurora1445') {
             res.send({
                 question: {"_id":{"$oid":"61a05902d63cbf8eddaf3ed7"},"prompt":"evaluate (A and B) or (A xor B) if A = 1 and B = 0","type":"MultipleChoice","options":["1","0","neither"],"secret":{"correctOptions":[{"$numberInt":"0"}]},"topic":"binary algebra","event":"Cybersecurity","showInFeed":true,"showInLibrary":true}
             })
+            return
         }
 
         if (questionID === 'oreo') {
             res.send({
                 question: {"prompt":"","type":"MultipleChoice","options":["1","0","neither"], "topic":"Nabisco","event":"Golden"}
             })
+            return
         }
 
         if (!userID) {
@@ -175,7 +145,6 @@ router.post('/loadQuestion', async (req, res) => {
             return
         }
         const question = await db.questions.findOne({_id: mongodb.ObjectId(questionID)})
-        // console.log(questions.length)
         if (!question) {
             res.json({status: false, message: "Question not found"})
         }
@@ -211,11 +180,9 @@ router.post('/loadTest', async (req, res) => {
             res.json({status: false, message: "Test not found"})
             return
         }
-            // console.log(question)
         for (let question of test.questions) {
             question.question = await db.questions.findOne({_id: mongodb.ObjectId(question.questionID)})
         }
-        // console.log(questions.length)
         res.json({
             status: true,
             test
@@ -242,7 +209,6 @@ router.post('/loadTests', async (req, res) => {
             return
         }
         let tests = await db.tests.find({event}).toArray()
-        console.log(tests.length)
         if (tests.length === 0) {
             res.json({status: false, message: "No tests found"})
         }
@@ -250,7 +216,6 @@ router.post('/loadTests', async (req, res) => {
             for (let test of tests) {
                 let submission = await db.testSubmissions.find({testID: test._id.toString(), userID}, {sort: {timestamp: -1}}).limit(1).toArray()
                 submission = submission[0]
-                // console.log(submission)
                 if (submission) {
                     test.solved = true
                     test.solvedDate = submission.timestamp
@@ -268,7 +233,6 @@ router.post('/loadTests', async (req, res) => {
                 else {
                     test.solved = false
                 }
-                // delete test.secret
             }
             res.json({
                 status: true,
@@ -289,7 +253,6 @@ router.post('/loadTests', async (req, res) => {
 router.post('/submitSolution', async (req, res) => {
     try {
         const {questionID, userID, solution} = req.body
-        // console.debug(req.body)
         if (!userID) {
             res.send({
                 status: false,
@@ -300,13 +263,11 @@ router.post('/submitSolution', async (req, res) => {
         let question = await db.questions.findOne({_id: new mongodb.ObjectId(questionID)})
 
         const checkReport = checkSolution(question, solution)
-        // console.log(solution, checkReport)
 
         //save score
         if (checkReport.correct) {
             let oldSubmission = await db.submissions.findOne({questionID: questionID, userID})
             if (!oldSubmission) {
-                // console.log(timeZScore)
                 const timeZScore = question.standardDeviation && question.standardDeviation !== 0 ? (solution.time - question.averageTime) / question.standardDeviation : -0.5
                 const score = timeZScore < 0 ? (-timeZScore/2 + 1) * 1000 : 1000
                 const date = new Date()
@@ -314,8 +275,7 @@ router.post('/submitSolution', async (req, res) => {
             }
         }
     
-        //post submision to db
-        const submission = {
+            const submission = {
             timestamp: Date.now(),
             questionID,
             userID,
@@ -326,39 +286,18 @@ router.post('/submitSolution', async (req, res) => {
         }
         if (!checkReport.continue) {
             await db.submissions.insertOne(submission)
-            //find the average and standard deviation time for this question
 
-            // const allQuestions = await db.questions.find().toArray()
-            // for (let q of allQuestions) {
-            //     await db.submissions.aggregate([
-            //         {$match: {questionID: q._id.toString(), "checkReport.correct": true}},
-            //         {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
-            //     ]).toArray((err, result) => {
-            //         if (err) {
-            //             console.error(err)
-            //         }
-            //         else {
-            //             if (result.length > 0) {
-            //                 db.questions.updateOne({_id: q._id}, {$set: {averageTime: result[0].averageTime}, $set: {standardDeviation: result[0].standardDeviation}})
-            //             }
-            //         }
-            //     })
-            //     console.log('Updated question ' + q.prompt)
-            // }
-
-            await db.submissions.aggregate([
-                {$match: {questionID: questionID, "checkReport.correct": true}},
-                {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
-            ]).toArray((err, result) => {
-                if (err) {
-                    console.error(err)
+            try {
+                const result = await db.submissions.aggregate([
+                    {$match: {questionID: questionID, "checkReport.correct": true}},
+                    {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
+                ]).toArray()
+                if (result.length > 0) {
+                    await db.questions.updateOne({_id: new mongodb.ObjectId(questionID)}, {$set: {averageTime: result[0].averageTime, standardDeviation: result[0].standardDeviation}})
                 }
-                else {
-                    if (result.length > 0) {
-                        db.questions.updateOne({_id: new mongodb.ObjectId(questionID)}, {$set: {averageTime: result[0].averageTime, standardDeviation: result[0].standardDeviation}})
-                    }
-                }
-            })
+            } catch (aggErr) {
+                console.error(aggErr)
+            }
         }
     
         res.json({
@@ -380,7 +319,6 @@ router.post('/mockSubmitSolution', async (req, res) => {
         let question = req.body
         const solution = req.body.solution
         const checkReport = checkSolution(question, solution)
-        // console.log(solution, checkReport, question)
 
         res.json({
             status: true,
@@ -396,7 +334,7 @@ router.post('/mockSubmitSolution', async (req, res) => {
     }
 })
 
-router.post('/addQuestion', jwtAuthz(['add:db']), async (req, res) => {
+router.post('/addQuestion', requirePermission('add:db'), async (req, res) => {
     try {
         const question = req.body.question
         question.submittedBy = req.body.userID
@@ -422,7 +360,7 @@ router.post('/addQuestion', jwtAuthz(['add:db']), async (req, res) => {
     }
 })
 
-router.post('/addTest', jwtAuthz(['add:db']), async (req, res) => {
+router.post('/addTest', requirePermission('add:db'), async (req, res) => {
     try {
         const test = req.body.test
         test.submittedBy = req.body.userID
@@ -444,7 +382,6 @@ router.post('/addTest', jwtAuthz(['add:db']), async (req, res) => {
 router.post('/submitTest', async (req, res) => {
     try {
         const {testID, userID, testSolutions} = req.body
-        // console.debug(req.body)
         if (!userID) {
             res.send({
                 status: false,
@@ -457,14 +394,12 @@ router.post('/submitTest', async (req, res) => {
         let reports = []
         for (let i = 0; i < test.questions.length; i++) {
             let q = await db.questions.findOne({_id: new mongodb.ObjectId(test.questions[i].questionID)})
-            // console.log(testSolutions[i])
             let checkReport = checkSolution(q, testSolutions[i])
             if (checkReport.correct) {
                 score += test.questions[i].points
             }
             reports.push(checkReport)
         }
-        console.log(score)
         res.json({
             status: true,
             score,
@@ -496,14 +431,14 @@ router.get('/getEvents', async (req, res) => {
     }
 })
 
-router.post('/getRanking', jwtAuthz(['read:db']), async (req, res) => {
+router.post('/getRanking', requirePermission('read:db'), async (req, res) => {
     try {
         const scoreConstant = 1000
         const {event, userID} = req.body
         const submissions = await db.submissions.find({event}).toArray()
         let scores = []
-        submissions.forEach(async submission => {
-            let userIndex = scores.findIndex(score => score.userID == submission.userID)
+        for (const submission of submissions) {
+            let userIndex = scores.findIndex(score => score.userID === submission.userID)
             if (userIndex < 0) {
                 let user = {
                     userID: submission.userID,
@@ -513,26 +448,19 @@ router.post('/getRanking', jwtAuthz(['read:db']), async (req, res) => {
                 scores.push(user)
                 userIndex = scores.length - 1
             }
-            
-            // console.log(userIndex)
+
             if (submission.checkReport.correct) {
-                //relative time error. If negative, it means the user got the question faster than average
                 const question = await db.questions.findOne({_id: new mongodb.ObjectId(submission.questionID)})
-                let timeError = (submission.userSolution.time - question.averageTime) / question.averageTime
-                timeError = timeError == 0 ? 1 : timeError
-                console.log(timeError)
-                const questionScore = scoreConstant * timeError < 0 ? -1/timeError : 1
-                scores[userIndex].score += questionScore
-                console.log(scores[userIndex].score)
-                // scores[userIndex].scoredQuestions.push(submission.questionID)
+                if (question && question.averageTime) {
+                    let timeError = (submission.userSolution.time - question.averageTime) / question.averageTime
+                    timeError = timeError === 0 ? 1 : timeError
+                    const questionScore = scoreConstant * (timeError < 0 ? -1/timeError : 1)
+                    scores[userIndex].score += questionScore
+                }
             }
-        })
-        // console.log(scores.length)
-        //take a square root. Just for fun
+        }
         scores.forEach(score => {
             score.score = Math.round(Math.sqrt(score.score))
-            console.log(score.score)
-            
         })
         scores.sort((a, b) => b.score - a.score)
         res.json({
@@ -549,7 +477,7 @@ router.post('/getRanking', jwtAuthz(['read:db']), async (req, res) => {
 })
 
 
-router.post('/MADTON', jwtAuthz(['read:db']), async (req, res) => {
+router.post('/MADTON', requirePermission('read:db'), async (req, res) => {
     try {
         const { userID, topic } = req.body
         const quotes = await axios.get("https://type.fit/api/quotes")
@@ -588,7 +516,6 @@ router.post('/MADTON', jwtAuthz(['read:db']), async (req, res) => {
             event: 'Codebusters',
             topic
         }
-        // console.log(quotes.data.length)
         res.json({
             status: true,
             question
@@ -603,7 +530,7 @@ router.post('/MADTON', jwtAuthz(['read:db']), async (req, res) => {
     }
 })
 
-router.post('/encrypt', jwtAuthz(['read:db']), async (req, res) => {
+router.post('/encrypt', requirePermission('read:db'), async (req, res) => {
     try {
         let { userID, topic, plaintext } = req.body
         let ciphertext = ''
@@ -672,7 +599,6 @@ function generateAristocrat(plaintext) {
     let randomAlphabet = shuffle([...alphabet])
     while (alphabet.findIndex((l, i) => l === randomAlphabet[i]) >= 0) {
         randomAlphabet = shuffle(randomAlphabet)
-        //console.log(alphabet)
     }
 
     let ciphertext = plaintext.split('').map(l => {
@@ -709,7 +635,6 @@ function checkSolution(question, solution) {
     let correct
     switch(question.type) {
         case 'MultipleChoice':
-            //console.debug(question.secret.correctOptionIndex, solution)
             correct = question.secret.correctOptions.includes(solution.answer)
             return {
                 continue: false,
@@ -733,11 +658,6 @@ function checkSolution(question, solution) {
             }
             else
                 mistakes = key.length
-
-            // console.debug(key)
-            // console.debug(solution)
-            // console.debug(key.text == solution)
-            // console.debug(mistakes)
 
             let message = " "
             let continueQuestion = false
@@ -789,15 +709,3 @@ function checkSolution(question, solution) {
     }
     return false
 }
-
-// async function parseUser(userID) {
-//     const user = await db.users.findOne({auth0ID: userID})
-//     if (user) {
-//         return user
-//     }
-//     else {
-//         await db.users.insertOne({
-//             auth0ID: userID,
-//         })
-//     }
-// }
