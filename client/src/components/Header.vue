@@ -22,6 +22,7 @@
           <!-- Logged in -->
           <div v-if="$auth.isAuthenticated" class="dropdown text-end">
             <a href="#" class="d-block link-dark text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
+              <img :src="$auth.user.picture" alt="" class="rounded-circle" width="32" height="32">
               <span class="p-2">{{ $auth.user.name }}</span>
             </a>
             <ul class="dropdown-menu text-small p-1" aria-labelledby="dropdownUser1">

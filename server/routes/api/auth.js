@@ -15,6 +15,12 @@ function setUp(DBclient) {
     db.users.createIndex({ email: 1 }, { unique: true }).catch(() => {})
 }
 
+// Gravatar URL from email (falls back to identicon for users without a Gravatar)
+function gravatarUrl(email) {
+    const hash = crypto.createHash('md5').update(email.trim().toLowerCase()).digest('hex')
+    return `https://www.gravatar.com/avatar/${hash}?d=identicon&s=128`
+}
+
 function signToken(user) {
     return jwt.sign(
         {
@@ -22,7 +28,8 @@ function signToken(user) {
             email: user.email,
             name: user.name,
             role: user.role,
-            permissions: user.permissions
+            permissions: user.permissions,
+            picture: gravatarUrl(user.email)
         },
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
@@ -147,7 +154,8 @@ router.post('/login', async (req, res) => {
                 email: user.email,
                 name: user.name,
                 role: user.role,
-                permissions: user.permissions
+                permissions: user.permissions,
+                picture: gravatarUrl(user.email)
             }
         })
     } catch (err) {
@@ -174,7 +182,8 @@ router.get('/me', authenticateToken, async (req, res) => {
                 email: user.email,
                 name: user.name,
                 role: user.role,
-                permissions: user.permissions
+                permissions: user.permissions,
+                picture: gravatarUrl(user.email)
             }
         })
     } catch (err) {
@@ -235,7 +244,8 @@ router.get('/admin/users', authenticateToken, requireAdmin, async (req, res) => 
                 role: u.role,
                 permissions: u.permissions,
                 verified: u.verified,
-                createdAt: u.createdAt
+                createdAt: u.createdAt,
+                picture: gravatarUrl(u.email)
             }))
         })
     } catch (err) {
