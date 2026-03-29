@@ -536,8 +536,16 @@ router.post('/MADTON', requirePermission('read:db'), async (req, res) => {
             type: "Cryptography",
             timed: true,
             event: 'Codebusters',
-            topic
+            topic,
+            madton: true,
+            showInFeed: false,
+            showInLibrary: false
         }
+
+        // Save to DB so submitSolution can find it and record submissions
+        const result = await db.questions.insertOne(question)
+        question._id = result.insertedId
+
         res.json({
             status: true,
             question
