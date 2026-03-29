@@ -83,6 +83,12 @@ export default {
       return
     }
 
+    // Save intended destination so Login can redirect back after auth
+    if (!this.$auth.isAuthenticated) {
+      const intendedPath = window.location.pathname + window.location.search
+      if (intendedPath !== '/') sessionStorage.setItem('loginRedirect', intendedPath)
+    }
+
     // Everything else requires auth
     switch (path[0]) {
       case '':

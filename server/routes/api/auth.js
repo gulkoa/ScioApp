@@ -3,10 +3,29 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const { Resend } = require('resend')
+const rateLimit = require('express-rate-limit')
 const { authenticateToken, requireAdmin } = require('../../middleware/auth')
 
 const router = express.Router()
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+// Strict limiter for sensitive auth actions (login, register, forgot-password)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { status: false, message: 'Too many attempts. Please try again in 15 minutes.' }
+})
+
+// Looser limiter for password reset (prevent email flooding)
+const resetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { status: false, message: 'Too many reset requests. Please try again in an hour.' }
+})
 
 let db = {}
 
@@ -37,7 +56,7 @@ function signToken(user) {
 }
 
 // Register
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
     try {
         const { email, password, name } = req.body
 
@@ -125,7 +144,7 @@ router.get('/verify', async (req, res) => {
 })
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
     try {
         const { email, password } = req.body
 
@@ -230,7 +249,7 @@ router.post('/resend-verification', async (req, res) => {
 })
 
 // Forgot password — generate token, send email
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', resetLimiter, async (req, res) => {
     try {
         const { email } = req.body
         if (!email) return res.json({ status: false, message: 'Email is required' })
@@ -367,6 +386,18 @@ router.patch('/me/password', authenticateToken, async (req, res) => {
     } catch (err) {
         console.error('Change password error:', err)
         res.json({ status: false, message: 'Failed to change password' })
+    }
+})
+
+// Delete own account — authenticated user
+router.delete('/me', authenticateToken, async (req, res) => {
+    try {
+        const { ObjectId } = require('mongodb')
+        await db.users.deleteOne({ _id: new ObjectId(req.user.id) })
+        res.json({ status: true, message: 'Account deleted' })
+    } catch (err) {
+        console.error('Delete account error:', err)
+        res.json({ status: false, message: 'Failed to delete account' })
     }
 })
 

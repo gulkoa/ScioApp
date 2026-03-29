@@ -46,6 +46,23 @@
         {{ pwLoading ? 'Updating...' : 'Update Password' }}
       </button>
     </div>
+
+    <!-- Delete account -->
+    <div class="card p-4 mb-3 border-danger">
+      <h5 class="mb-3 text-danger">Delete Account</h5>
+      <p class="text-muted small">This permanently deletes your account and cannot be undone.</p>
+      <div v-if="deleteError" class="alert alert-danger py-2">{{ deleteError }}</div>
+      <div v-if="!confirmDelete">
+        <button class="btn btn-outline-danger" @click="confirmDelete = true">Delete my account</button>
+      </div>
+      <div v-else>
+        <p class="text-danger small fw-bold">Are you sure? This action is irreversible.</p>
+        <button class="btn btn-danger me-2" :disabled="deleteLoading" @click="submitDelete">
+          {{ deleteLoading ? 'Deleting...' : 'Yes, delete my account' }}
+        </button>
+        <button class="btn btn-secondary" @click="confirmDelete = false">Cancel</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -67,7 +84,11 @@ export default {
       confirmPassword: '',
       pwError: null,
       pwSuccess: null,
-      pwLoading: false
+      pwLoading: false,
+
+      confirmDelete: false,
+      deleteError: null,
+      deleteLoading: false
     }
   },
   methods: {
@@ -111,6 +132,19 @@ export default {
         this.pwError = result.message
       }
       this.pwLoading = false
+    },
+
+    async submitDelete() {
+      this.deleteError = null
+      this.deleteLoading = true
+      const result = await this.$auth.deleteAccount()
+      if (result.status) {
+        window.location.href = '/'
+      } else {
+        this.deleteError = result.message
+        this.confirmDelete = false
+      }
+      this.deleteLoading = false
     }
   }
 }

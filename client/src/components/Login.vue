@@ -54,7 +54,9 @@ export default {
       const result = await this.$auth.login(this.email, this.password)
 
       if (result.status) {
-        window.location.href = '/'
+        const redirect = sessionStorage.getItem('loginRedirect') || '/'
+        sessionStorage.removeItem('loginRedirect')
+        window.location.href = redirect
       } else {
         if (result.needsVerification) {
           this.info = result.message

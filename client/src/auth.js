@@ -138,6 +138,19 @@ export const useAuth = () => {
         }
       },
 
+      // Permanently delete the current user's account
+      async deleteAccount() {
+        try {
+          const res = await axios.delete(url + 'me', {
+            headers: { Authorization: 'Bearer ' + this.token }
+          })
+          if (res.data.status) this._clearSession()
+          return res.data
+        } catch {
+          return { status: false, message: 'Network error' }
+        }
+      },
+
       // Check if user has a specific permission
       hasPermission(permission) {
         if (!this.user) return false
