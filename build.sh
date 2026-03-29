@@ -1,6 +1,5 @@
 cd client
-npm install
-npm i @vue/cli-service
+npm install --include=dev
 npm run build
 cd ..
 npm install
