@@ -243,12 +243,16 @@ router.get('/admin/users', authenticateToken, requireAdmin, async (req, res) => 
     }
 })
 
-// Update user role
-router.patch('/admin/users/:id/role', authenticateToken, requireAdmin, async (req, res) => {
+// Update user role — admin only (captains cannot assign roles)
+router.patch('/admin/users/:id/role', authenticateToken, async (req, res) => {
     try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ status: false, message: 'Only admins can change roles' })
+        }
+
         const { ObjectId } = require('mongodb')
         const { role } = req.body
-        const validRoles = ['student', 'coach', 'admin']
+        const validRoles = ['student', 'captain', 'admin']
 
         if (!validRoles.includes(role)) {
             return res.json({ status: false, message: 'Invalid role' })
@@ -265,10 +269,19 @@ router.patch('/admin/users/:id/role', authenticateToken, requireAdmin, async (re
     }
 })
 
-// Update user permissions
+// Update user permissions — admins can edit anyone, captains can only edit students
 router.patch('/admin/users/:id/permissions', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { ObjectId } = require('mongodb')
+
+        // Captains can only edit students
+        if (req.user.role === 'captain') {
+            const target = await db.users.findOne({ _id: new ObjectId(req.params.id) })
+            if (!target || target.role !== 'student') {
+                return res.status(403).json({ status: false, message: 'Captains can only edit student permissions' })
+            }
+        }
+
         const { permissions } = req.body
 
         if (!Array.isArray(permissions)) {
@@ -289,8 +302,11 @@ router.patch('/admin/users/:id/permissions', authenticateToken, requireAdmin, as
     }
 })
 
-// Delete user
-router.delete('/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+// Delete user — admin only
+router.delete('/admin/users/:id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ status: false, message: 'Only admins can delete users' })
+    }
     try {
         const { ObjectId } = require('mongodb')
 

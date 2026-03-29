@@ -51,7 +51,7 @@ export default {
   },
   computed: {
     isAdmin() {
-      return this.$auth.isAuthenticated && this.$auth.user && this.$auth.user.role === 'admin'
+      return this.$auth.isAuthenticated && this.$auth.user && ['admin', 'captain'].includes(this.$auth.user.role)
     },
     isNats() {
       const month = new Date().getMonth() + 1

@@ -1,6 +1,6 @@
 <template>
   <div class="container my-4">
-    <h2 class="mb-4">Admin Panel</h2>
+    <h2 class="mb-4">{{ isAdmin ? 'Admin Panel' : 'Team Roster' }}</h2>
 
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
@@ -19,7 +19,7 @@
             <th>Role</th>
             <th>Permissions</th>
             <th>Verified</th>
-            <th>Actions</th>
+            <th v-if="isAdmin">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -27,24 +27,26 @@
             <td>{{ user.name }}</td>
             <td class="text-muted">{{ user.email }}</td>
 
-            <!-- Role dropdown -->
+            <!-- Role: only admins can change roles -->
             <td>
-              <select class="form-select form-select-sm" style="width:120px"
+              <select v-if="isAdmin" class="form-select form-select-sm" style="width:120px"
                       :value="user.role" @change="changeRole(user, $event.target.value)">
                 <option value="student">Student</option>
-                <option value="coach">Coach</option>
+                <option value="captain">Captain</option>
                 <option value="admin">Admin</option>
               </select>
+              <span v-else class="badge" :class="roleBadge(user.role)">{{ user.role }}</span>
             </td>
 
-            <!-- Permission checkboxes -->
+            <!-- Permissions: admins edit anyone, captains edit students only -->
             <td>
               <div class="d-flex flex-wrap gap-1">
                 <span v-for="perm in allPermissions" :key="perm"
                       class="badge"
                       :class="user.permissions.includes(perm) ? 'bg-primary' : 'bg-light text-dark border'"
-                      style="cursor:pointer; font-size: 0.75em"
-                      @click="togglePermission(user, perm)">
+                      :style="canEditPerms(user) ? 'cursor:pointer' : 'cursor:default; opacity:0.6'"
+                      style="font-size: 0.75em"
+                      @click="canEditPerms(user) && togglePermission(user, perm)">
                   {{ perm }}
                 </span>
               </div>
@@ -56,7 +58,8 @@
               </span>
             </td>
 
-            <td>
+            <!-- Delete: admin only -->
+            <td v-if="isAdmin">
               <button class="btn btn-sm btn-outline-danger"
                       v-if="user.id !== currentUserId"
                       @click="removeUser(user)">
@@ -91,6 +94,12 @@ export default {
   computed: {
     currentUserId() {
       return this.$auth.user ? this.$auth.user.id : null
+    },
+    isAdmin() {
+      return this.$auth.user && this.$auth.user.role === 'admin'
+    },
+    isCaptain() {
+      return this.$auth.user && this.$auth.user.role === 'captain'
     }
   },
   async created() {
@@ -108,6 +117,19 @@ export default {
       this.loading = false
     },
 
+    // Captains can only edit permissions on students
+    canEditPerms(user) {
+      if (this.isAdmin) return true
+      if (this.isCaptain && user.role === 'student') return true
+      return false
+    },
+
+    roleBadge(role) {
+      if (role === 'admin') return 'bg-danger'
+      if (role === 'captain') return 'bg-warning text-dark'
+      return 'bg-secondary'
+    },
+
     async changeRole(user, role) {
       this.clearMessages()
       const result = await ServerTalker.updateUserRole(user.id, role)
@@ -120,6 +142,7 @@ export default {
     },
 
     async togglePermission(user, perm) {
+      if (!this.canEditPerms(user)) return
       this.clearMessages()
       const perms = user.permissions.includes(perm)
         ? user.permissions.filter(p => p !== perm)
