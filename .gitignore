@@ -2,3 +2,5 @@ node_modules/
 */node_modules/
 /server/public/
 .env
+.env.local
+client/.env.local
