@@ -431,48 +431,70 @@ router.get('/getEvents', async (req, res) => {
     }
 })
 
+// Weekly leaderboard — scores users by correct submissions this week (Mon–Sun)
+// Faster solves score higher. MADTON submissions count under Codebusters.
 router.post('/getRanking', requirePermission('read:db'), async (req, res) => {
     try {
-        const scoreConstant = 1000
-        const {event, userID} = req.body
-        const submissions = await db.submissions.find({event}).toArray()
-        let scores = []
-        for (const submission of submissions) {
-            let userIndex = scores.findIndex(score => score.userID === submission.userID)
-            if (userIndex < 0) {
-                let user = {
-                    userID: submission.userID,
-                    score: 0,
-                    scoredQuestions: []
-                }
-                scores.push(user)
-                userIndex = scores.length - 1
-            }
+        let { event } = req.body
 
-            if (submission.checkReport.correct) {
-                const question = await db.questions.findOne({_id: new mongodb.ObjectId(submission.questionID)})
-                if (question && question.averageTime) {
-                    let timeError = (submission.userSolution.time - question.averageTime) / question.averageTime
-                    timeError = timeError === 0 ? 1 : timeError
-                    const questionScore = scoreConstant * (timeError < 0 ? -1/timeError : 1)
-                    scores[userIndex].score += questionScore
-                }
+        // Calculate current week boundaries (Monday 00:00 to Sunday 23:59)
+        const now = new Date()
+        const day = now.getUTCDay() // 0=Sun, 1=Mon...
+        const diffToMonday = day === 0 ? 6 : day - 1
+        const monday = new Date(now)
+        monday.setUTCDate(now.getUTCDate() - diffToMonday)
+        monday.setUTCHours(0, 0, 0, 0)
+        const sunday = new Date(monday)
+        sunday.setUTCDate(monday.getUTCDate() + 7)
+
+        // MADTON submissions are stored with event "Codebusters"
+        const eventFilter = event === 'Codebusters' ? { $in: ['Codebusters'] } : event
+
+        // Get all correct submissions this week for the event
+        const submissions = await db.submissions.find({
+            event: eventFilter,
+            'checkReport.correct': true,
+            timestamp: { $gte: monday.getTime(), $lt: sunday.getTime() }
+        }).toArray()
+
+        // Build scores per user — each correct answer = 1000 pts + speed bonus
+        const userMap = {}
+        for (const sub of submissions) {
+            if (!userMap[sub.userID]) {
+                userMap[sub.userID] = { userID: sub.userID, solved: 0, score: 0, totalTime: 0 }
             }
+            const u = userMap[sub.userID]
+            u.solved++
+            const solveTime = sub.userSolution?.time || 0
+            u.totalTime += solveTime
+            // Base 1000 pts per solve + speed bonus (faster = higher)
+            const speedBonus = solveTime > 0 ? Math.max(0, 500 - solveTime / 10) : 0
+            u.score += 1000 + Math.round(speedBonus)
         }
-        scores.forEach(score => {
-            score.score = Math.round(Math.sqrt(score.score))
-        })
+
+        let scores = Object.values(userMap)
+
+        // Resolve user names from DB
+        const userIds = scores.map(s => s.userID)
+        const users = await db.users.find(
+            { _id: { $in: userIds.map(id => { try { return new mongodb.ObjectId(id) } catch(e) { return id } }) } },
+            { projection: { name: 1, email: 1 } }
+        ).toArray()
+        const nameMap = {}
+        users.forEach(u => { nameMap[u._id.toString()] = u.name || u.email })
+
+        scores.forEach(s => { s.name = nameMap[s.userID] || s.userID })
         scores.sort((a, b) => b.score - a.score)
+
         res.json({
             status: true,
-            users: scores
+            users: scores,
+            weekStart: monday.toISOString(),
+            weekEnd: sunday.toISOString()
         })
     } catch(err) {
         console.error(err)
-        res.json({
-            status: false,
-            message: "Unknown server error"
-        })
+        res.json({ status: false, message: "Unknown server error" })
     }
 })
 
