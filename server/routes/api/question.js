@@ -16,7 +16,7 @@ function setUp(DBclient) {
 
 const router = express.Router()
 //jwtAuthz(['read:db'])
-router.post('/loadFeed', async (req, res) => {
+router.post('/loadFeed', requirePermission('read:db'), async (req, res) => {
     try {
         const {event, topicsNames, userID} = req.body
         if (!userID) {
@@ -64,7 +64,7 @@ router.post('/loadFeed', async (req, res) => {
     }
 })
 //jwtAuthz(['read:db'])
-router.post('/loadLibrary', async (req, res) => {
+router.post('/loadLibrary', requirePermission('read:db'), async (req, res) => {
     try {
         const {event, topicsNames, userID} = req.body
         if (!userID) {
@@ -118,7 +118,7 @@ router.post('/loadLibrary', async (req, res) => {
 
 })
 //jwtAuthz(['read:db'])
-router.post('/loadQuestion', async (req, res) => {
+router.post('/loadQuestion', requirePermission('read:db'), async (req, res) => {
     try {
         const {questionID, userID} = req.body
 
@@ -165,7 +165,7 @@ router.post('/loadQuestion', async (req, res) => {
     }
 })
 
-router.post('/loadTest', async (req, res) => {
+router.post('/loadTest', requirePermission('read:db'), async (req, res) => {
     try {
         const {testID, userID} = req.body
         if (!userID) {
@@ -198,7 +198,7 @@ router.post('/loadTest', async (req, res) => {
 })
 
 
-router.post('/loadTests', async (req, res) => {
+router.post('/loadTests', requirePermission('read:db'), async (req, res) => {
     try {
         const {event, userID} = req.body
         if (!userID) {
@@ -250,7 +250,7 @@ router.post('/loadTests', async (req, res) => {
 })
 
 //jwtAuthz(['read:db'])
-router.post('/submitSolution', async (req, res) => {
+router.post('/submitSolution', requirePermission('read:db'), async (req, res) => {
     try {
         const {questionID, userID, solution} = req.body
         if (!userID) {
@@ -379,7 +379,7 @@ router.post('/addTest', requirePermission('add:db'), async (req, res) => {
     }
 })
 
-router.post('/submitTest', async (req, res) => {
+router.post('/submitTest', requirePermission('read:db'), async (req, res) => {
     try {
         const {testID, userID, testSolutions} = req.body
         if (!userID) {

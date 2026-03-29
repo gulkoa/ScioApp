@@ -57,12 +57,15 @@ router.post('/register', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10)
         const verificationToken = crypto.randomBytes(32).toString('hex')
 
+        // @solonschools.net emails get read access by default, others start with no permissions
+        const defaultPerms = email.toLowerCase().endsWith('@solonschools.net') ? ['read:db'] : []
+
         const user = {
             email: email.toLowerCase(),
             password: hashedPassword,
             name,
             role: 'student',
-            permissions: ['read:db'],
+            permissions: defaultPerms,
             verified: false,
             verificationToken,
             createdAt: new Date()
