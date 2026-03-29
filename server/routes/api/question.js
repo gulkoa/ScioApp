@@ -318,7 +318,21 @@ router.post('/mockSubmitSolution', async (req, res) => {
     try {
         let question = req.body
         const solution = req.body.solution
+        const userID = req.body.userID
         const checkReport = checkSolution(question, solution)
+
+        // Save MADTON submissions so they count on the leaderboard
+        if (!checkReport.continue && userID && question.event) {
+            await db.submissions.insertOne({
+                timestamp: Date.now(),
+                questionID: 'madton',
+                userID,
+                userSolution: solution,
+                questionType: question.type,
+                event: question.event,
+                checkReport
+            })
+        }
 
         res.json({
             status: true,
@@ -536,16 +550,8 @@ router.post('/MADTON', requirePermission('read:db'), async (req, res) => {
             type: "Cryptography",
             timed: true,
             event: 'Codebusters',
-            topic,
-            madton: true,
-            showInFeed: false,
-            showInLibrary: false
+            topic
         }
-
-        // Save to DB so submitSolution can find it and record submissions
-        const result = await db.questions.insertOne(question)
-        question._id = result.insertedId
-
         res.json({
             status: true,
             question

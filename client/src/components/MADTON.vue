@@ -22,7 +22,7 @@
         <p class="m-2">Solved just now: {{solvedJustNow}}</p>
     </div>
     <div class="card card-body p-4 " v-if="displayQuestion">
-        <QuestionWrapper :key="questionWrapperKey" :userID="userID" :question="question" :messages="messages" @loadNewQuestion="loadNewQuestion()" @correct="correct()"/>
+        <QuestionWrapper :key="questionWrapperKey" :userID="userID" :question="question" :messages="messages" @loadNewQuestion="loadNewQuestion()" @correct="correct()" :mockSubmit="true"/>
     </div>
   </div>
 </template>
