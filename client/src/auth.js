@@ -89,6 +89,55 @@ export const useAuth = () => {
         }
       },
 
+      // Request a password reset email
+      async forgotPassword(email) {
+        try {
+          const res = await axios.post(url + 'forgot-password', { email })
+          return res.data
+        } catch {
+          return { status: false, message: 'Network error' }
+        }
+      },
+
+      // Complete password reset with token from email
+      async resetPassword(token, password) {
+        try {
+          const res = await axios.post(url + 'reset-password', { token, password })
+          return res.data
+        } catch {
+          return { status: false, message: 'Network error' }
+        }
+      },
+
+      // Change display name (authenticated)
+      async changeName(newName) {
+        try {
+          const res = await axios.patch(url + 'me/name', { name: newName }, {
+            headers: { Authorization: 'Bearer ' + this.token }
+          })
+          if (res.data.status) {
+            this.user = res.data.user
+            this.token = res.data.token
+            localStorage.setItem('token', res.data.token)
+          }
+          return res.data
+        } catch {
+          return { status: false, message: 'Network error' }
+        }
+      },
+
+      // Change password while logged in (requires current password)
+      async changePassword(currentPassword, newPassword) {
+        try {
+          const res = await axios.patch(url + 'me/password', { currentPassword, newPassword }, {
+            headers: { Authorization: 'Bearer ' + this.token }
+          })
+          return res.data
+        } catch {
+          return { status: false, message: 'Network error' }
+        }
+      },
+
       // Check if user has a specific permission
       hasPermission(permission) {
         if (!this.user) return false

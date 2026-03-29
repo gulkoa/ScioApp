@@ -51,6 +51,8 @@ import Login from './components/Login.vue'
 import Register from './components/Register.vue'
 import Verify from './components/Verify.vue'
 import Admin from './components/Admin.vue'
+import ForgotPassword from './components/ForgotPassword.vue'
+import ResetPassword from './components/ResetPassword.vue'
 
 export default {
   name: 'App',
@@ -64,6 +66,7 @@ export default {
   components: {
     Question, Feed, Header, QuestionEditor, Library, Profile, Ranking,
     Test, TestEditor, TestLibrary, MADTON, Login, Register, Verify, Admin,
+    ForgotPassword, ResetPassword,
   },
   async mounted() {
     // Initialize auth (restore session from localStorage)
@@ -73,7 +76,7 @@ export default {
     path.splice(0, 1)
 
     // Public pages — accessible without login
-    const publicPages = { 'login': 'Login', 'register': 'Register', 'verify': 'Verify' }
+    const publicPages = { 'login': 'Login', 'register': 'Register', 'verify': 'Verify', 'forgot-password': 'ForgotPassword', 'reset-password': 'ResetPassword' }
     if (publicPages[path[0]]) {
       this.innerComponent = publicPages[path[0]]
       this.isPublicPage = true
