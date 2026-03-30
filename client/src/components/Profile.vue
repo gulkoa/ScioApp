@@ -11,6 +11,44 @@
       </p>
     </div>
 
+    <!-- Event Performance -->
+    <div class="card p-4 mb-3">
+      <h5 class="mb-3">Event Performance</h5>
+      <div v-if="perfLoading" class="text-muted">Loading performance data...</div>
+      <div v-else-if="perfError" class="alert alert-danger py-2">{{ perfError }}</div>
+      <div v-else-if="performance.length === 0" class="text-muted">No submissions yet. Start solving questions to see your stats!</div>
+      <div v-else>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th class="text-center">Solved</th>
+                <th class="text-center">Attempts</th>
+                <th class="text-center">Accuracy</th>
+                <th class="text-center">Avg Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in performance" :key="p.event">
+                <td>{{ p.event }}</td>
+                <td class="text-center">{{ p.correct }}</td>
+                <td class="text-center">{{ p.totalAttempts }}</td>
+                <td class="text-center">
+                  <span :class="accuracyClass(p.accuracy)">{{ p.accuracy }}%</span>
+                </td>
+                <td class="text-center">{{ formatTime(p.avgTime) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-3 pt-2 border-top d-flex justify-content-between text-muted small">
+          <span>Total solved: {{ totalSolved }}</span>
+          <span>Overall accuracy: {{ overallAccuracy }}%</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Change name -->
     <div class="card p-4 mb-3">
       <h5 class="mb-3">Change Display Name</h5>
@@ -67,6 +105,8 @@
 </template>
 
 <script>
+import ServerTalker from '../ServerTalker'
+
 export default {
   name: 'Profile',
   props: {
@@ -74,6 +114,10 @@ export default {
   },
   data() {
     return {
+      performance: [],
+      perfLoading: true,
+      perfError: null,
+
       newName: '',
       nameError: null,
       nameSuccess: null,
@@ -91,7 +135,39 @@ export default {
       deleteLoading: false
     }
   },
+  computed: {
+    totalSolved() {
+      return this.performance.reduce((sum, p) => sum + p.correct, 0)
+    },
+    overallAccuracy() {
+      const total = this.performance.reduce((sum, p) => sum + p.totalAttempts, 0)
+      const correct = this.performance.reduce((sum, p) => sum + p.correct, 0)
+      return total > 0 ? Math.round((correct / total) * 100) : 0
+    }
+  },
+  async created() {
+    try {
+      const data = await ServerTalker.getPerformance()
+      this.performance = data.performance
+    } catch (err) {
+      this.perfError = 'Could not load performance data.'
+    }
+    this.perfLoading = false
+  },
   methods: {
+    formatTime(time) {
+      if (!time) return '-'
+      const seconds = time / 10
+      if (seconds < 60) return Math.round(seconds) + 's'
+      const m = Math.floor(seconds / 60)
+      const s = Math.round(seconds % 60)
+      return m + 'm ' + s + 's'
+    },
+    accuracyClass(accuracy) {
+      if (accuracy >= 80) return 'text-success fw-bold'
+      if (accuracy >= 50) return 'text-warning fw-bold'
+      return 'text-danger fw-bold'
+    },
     async submitName() {
       this.nameError = null
       this.nameSuccess = null
