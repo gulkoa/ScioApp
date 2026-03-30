@@ -43,6 +43,7 @@
 
         <!-- 2nd place -->
         <div v-if="users.length >= 2" class="podium-card text-center" style="order:1">
+          <img v-if="users[1].picture" :src="users[1].picture" class="podium-avatar" alt="">
           <div class="podium-rank silver">2</div>
           <div class="podium-bar silver-bg" style="height:100px"></div>
           <p class="fw-bold mb-0 mt-2">{{ users[1].name }}</p>
@@ -52,6 +53,7 @@
 
         <!-- 1st place -->
         <div class="podium-card text-center" style="order:2">
+          <img v-if="users[0].picture" :src="users[0].picture" class="podium-avatar podium-avatar-lg" alt="">
           <div class="podium-rank gold">1</div>
           <div class="podium-bar gold-bg" style="height:140px"></div>
           <p class="fw-bold mb-0 mt-2">{{ users[0].name }}</p>
@@ -61,6 +63,7 @@
 
         <!-- 3rd place -->
         <div v-if="users.length >= 3" class="podium-card text-center" style="order:3">
+          <img v-if="users[2].picture" :src="users[2].picture" class="podium-avatar" alt="">
           <div class="podium-rank bronze">3</div>
           <div class="podium-bar bronze-bg" style="height:70px"></div>
           <p class="fw-bold mb-0 mt-2">{{ users[2].name }}</p>
@@ -85,7 +88,10 @@
             <tr v-for="(user, index) in users.slice(3)" :key="user.userID"
                 :class="{ 'table-info': user.userID === currentUserId }">
               <td class="text-center text-muted">{{ index + 4 }}</td>
-              <td class="fw-bold">{{ user.name }}</td>
+              <td class="fw-bold">
+                <img v-if="user.picture" :src="user.picture" class="table-avatar me-2" alt="">
+                {{ user.name }}
+              </td>
               <td class="text-center">{{ user.solved }}</td>
               <td class="text-center text-muted">{{ formatAvgTime(user) }}</td>
               <td class="text-end">{{ user.score.toLocaleString() }}</td>
@@ -182,4 +188,24 @@ export default {
 .silver-bg { background: linear-gradient(180deg, #C0C0C0, #909090); }
 .bronze    { background: #CD7F32; }
 .bronze-bg { background: linear-gradient(180deg, #CD7F32, #A0522D); }
+.podium-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #dee2e6;
+  margin-bottom: 4px;
+}
+.podium-avatar-lg {
+  width: 64px;
+  height: 64px;
+  border-width: 3px;
+}
+.table-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: middle;
+}
 </style>

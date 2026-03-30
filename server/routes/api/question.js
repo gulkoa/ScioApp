@@ -1,7 +1,13 @@
 const express = require('express')
 const mongodb = require('mongodb')
+const crypto = require('crypto')
 const axios = require('axios')
 const { requirePermission } = require('../../middleware/auth')
+
+function gravatarUrl(email, size) {
+    const hash = crypto.createHash('md5').update(email.trim().toLowerCase()).digest('hex')
+    return `https://www.gravatar.com/avatar/${hash}?d=identicon&s=${size || 64}`
+}
 let client = null
 let db = {}
 function setUp(DBclient) {
@@ -495,9 +501,16 @@ router.post('/getRanking', requirePermission('read:db'), async (req, res) => {
             { projection: { name: 1, email: 1 } }
         ).toArray()
         const nameMap = {}
-        users.forEach(u => { nameMap[u._id.toString()] = u.name || u.email })
+        const pictureMap = {}
+        users.forEach(u => {
+            nameMap[u._id.toString()] = u.name || u.email
+            pictureMap[u._id.toString()] = gravatarUrl(u.email, 64)
+        })
 
-        scores.forEach(s => { s.name = nameMap[s.userID] || s.userID })
+        scores.forEach(s => {
+            s.name = nameMap[s.userID] || s.userID
+            s.picture = pictureMap[s.userID] || null
+        })
         scores.sort((a, b) => b.score - a.score)
 
         res.json({
