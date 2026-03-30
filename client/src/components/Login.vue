@@ -23,6 +23,9 @@
     </button>
 
     <p class="text-center mt-3 mb-0">
+      <a href="/forgot-password">Forgot password?</a>
+    </p>
+    <p class="text-center mt-2 mb-0">
       Don't have an account? <a href="/register">Sign up</a>
     </p>
   </div>
@@ -51,7 +54,9 @@ export default {
       const result = await this.$auth.login(this.email, this.password)
 
       if (result.status) {
-        window.location.href = '/'
+        const redirect = sessionStorage.getItem('loginRedirect') || '/'
+        sessionStorage.removeItem('loginRedirect')
+        window.location.href = redirect
       } else {
         if (result.needsVerification) {
           this.info = result.message

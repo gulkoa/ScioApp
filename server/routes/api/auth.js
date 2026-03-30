@@ -3,10 +3,29 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const { Resend } = require('resend')
+const rateLimit = require('express-rate-limit')
 const { authenticateToken, requireAdmin } = require('../../middleware/auth')
 
 const router = express.Router()
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+// Strict limiter for sensitive auth actions (login, register, forgot-password)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { status: false, message: 'Too many attempts. Please try again in 15 minutes.' }
+})
+
+// Looser limiter for password reset (prevent email flooding)
+const resetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { status: false, message: 'Too many reset requests. Please try again in an hour.' }
+})
 
 let db = {}
 
@@ -37,7 +56,7 @@ function signToken(user) {
 }
 
 // Register
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
     try {
         const { email, password, name } = req.body
 
@@ -125,7 +144,7 @@ router.get('/verify', async (req, res) => {
 })
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
     try {
         const { email, password } = req.body
 
@@ -226,6 +245,159 @@ router.post('/resend-verification', async (req, res) => {
         res.json({ status: true, message: 'If that email exists and is unverified, a new link has been sent.' })
     } catch (err) {
         res.json({ status: true, message: 'If that email exists and is unverified, a new link has been sent.' })
+    }
+})
+
+// Forgot password — generate token, send email
+router.post('/forgot-password', resetLimiter, async (req, res) => {
+    try {
+        const { email } = req.body
+        if (!email) return res.json({ status: false, message: 'Email is required' })
+
+        const user = await db.users.findOne({ email: email.toLowerCase() })
+        // Always respond the same way to avoid user enumeration
+        if (!user || !user.verified) {
+            return res.json({ status: true, message: 'If that email is registered, a reset link has been sent.' })
+        }
+
+        const resetToken = crypto.randomBytes(32).toString('hex')
+        const resetExpires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+
+        await db.users.updateOne(
+            { _id: user._id },
+            { $set: { resetToken, resetExpires } }
+        )
+
+        const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`
+        const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`
+
+        try {
+            await resend.emails.send({
+                from: process.env.EMAIL_FROM || 'ScioApp <noreply@resend.dev>',
+                to: [user.email],
+                subject: 'Reset your ScioApp password',
+                html: `
+                    <h2>Reset your password</h2>
+                    <p>Hi ${user.name},</p>
+                    <p>Click the button below to reset your password. This link expires in 1 hour.</p>
+                    <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#0d6efd;color:white;text-decoration:none;border-radius:6px;font-weight:bold;">Reset Password</a>
+                    <p style="margin-top:16px;color:#666;">Or copy this link: ${resetUrl}</p>
+                    <p style="color:#666;">If you didn't request a password reset, you can ignore this email.</p>
+                `
+            })
+        } catch (emailErr) {
+            console.error('Failed to send reset email:', emailErr)
+        }
+
+        res.json({ status: true, message: 'If that email is registered, a reset link has been sent.' })
+    } catch (err) {
+        console.error('Forgot password error:', err)
+        res.json({ status: false, message: 'Failed to process request' })
+    }
+})
+
+// Reset password — verify token, set new password
+router.post('/reset-password', async (req, res) => {
+    try {
+        const { token, password } = req.body
+        if (!token || !password) return res.json({ status: false, message: 'Token and password are required' })
+        if (password.length < 6) return res.json({ status: false, message: 'Password must be at least 6 characters' })
+
+        const user = await db.users.findOne({
+            resetToken: token,
+            resetExpires: { $gt: new Date() }
+        })
+
+        if (!user) return res.json({ status: false, message: 'Invalid or expired reset link' })
+
+        const hashedPassword = await bcrypt.hash(password, 10)
+
+        await db.users.updateOne(
+            { _id: user._id },
+            {
+                $set: { password: hashedPassword },
+                $unset: { resetToken: '', resetExpires: '' }
+            }
+        )
+
+        res.json({ status: true, message: 'Password updated! You can now log in.' })
+    } catch (err) {
+        console.error('Reset password error:', err)
+        res.json({ status: false, message: 'Failed to reset password' })
+    }
+})
+
+// Change name — authenticated user
+router.patch('/me/name', authenticateToken, async (req, res) => {
+    try {
+        const { name } = req.body
+        if (!name || !name.trim()) return res.json({ status: false, message: 'Name is required' })
+        if (name.trim().length > 64) return res.json({ status: false, message: 'Name is too long' })
+
+        const { ObjectId } = require('mongodb')
+        await db.users.updateOne(
+            { _id: new ObjectId(req.user.id) },
+            { $set: { name: name.trim() } }
+        )
+
+        const updatedUser = await db.users.findOne({ _id: new ObjectId(req.user.id) })
+        const newToken = signToken(updatedUser)
+
+        res.json({
+            status: true,
+            message: 'Name updated',
+            token: newToken,
+            user: {
+                id: updatedUser._id.toString(),
+                email: updatedUser.email,
+                name: updatedUser.name,
+                role: updatedUser.role,
+                permissions: updatedUser.permissions,
+                picture: gravatarUrl(updatedUser.email)
+            }
+        })
+    } catch (err) {
+        console.error('Change name error:', err)
+        res.json({ status: false, message: 'Failed to update name' })
+    }
+})
+
+// Change password — authenticated user (knows current password)
+router.patch('/me/password', authenticateToken, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body
+        if (!currentPassword || !newPassword) return res.json({ status: false, message: 'Current and new password are required' })
+        if (newPassword.length < 6) return res.json({ status: false, message: 'New password must be at least 6 characters' })
+
+        const { ObjectId } = require('mongodb')
+        const user = await db.users.findOne({ _id: new ObjectId(req.user.id) })
+        if (!user) return res.json({ status: false, message: 'User not found' })
+
+        const valid = await bcrypt.compare(currentPassword, user.password)
+        if (!valid) return res.json({ status: false, message: 'Current password is incorrect' })
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10)
+        await db.users.updateOne(
+            { _id: new ObjectId(req.user.id) },
+            { $set: { password: hashedPassword } }
+        )
+
+        res.json({ status: true, message: 'Password changed successfully' })
+    } catch (err) {
+        console.error('Change password error:', err)
+        res.json({ status: false, message: 'Failed to change password' })
+    }
+})
+
+// Delete own account — authenticated user
+router.delete('/me', authenticateToken, async (req, res) => {
+    try {
+        const { ObjectId } = require('mongodb')
+        await db.users.deleteOne({ _id: new ObjectId(req.user.id) })
+        res.json({ status: true, message: 'Account deleted' })
+    } catch (err) {
+        console.error('Delete account error:', err)
+        res.json({ status: false, message: 'Failed to delete account' })
     }
 })
 
