@@ -513,6 +513,58 @@ router.post('/getRanking', requirePermission('read:db'), async (req, res) => {
 })
 
 
+router.post('/getPerformance', requirePermission('read:db'), async (req, res) => {
+    try {
+        const { userID } = req.body
+        if (!userID) {
+            return res.json({ status: false, message: 'UserID is missing in request' })
+        }
+
+        const events = require('../../events.json')
+        const eventNames = events.map(e => e.name)
+
+        const pipeline = [
+            { $match: { userID, event: { $in: eventNames } } },
+            {
+                $group: {
+                    _id: '$event',
+                    totalAttempts: { $sum: 1 },
+                    correctCount: {
+                        $sum: { $cond: ['$checkReport.correct', 1, 0] }
+                    },
+                    avgTime: {
+                        $avg: {
+                            $cond: [
+                                '$checkReport.correct',
+                                '$userSolution.time',
+                                null
+                            ]
+                        }
+                    },
+                    lastAttempt: { $max: '$timestamp' }
+                }
+            },
+            { $sort: { correctCount: -1 } }
+        ]
+
+        const results = await db.submissions.aggregate(pipeline).toArray()
+
+        const performance = results.map(r => ({
+            event: r._id,
+            totalAttempts: r.totalAttempts,
+            correct: r.correctCount,
+            accuracy: r.totalAttempts > 0 ? Math.round((r.correctCount / r.totalAttempts) * 100) : 0,
+            avgTime: r.avgTime ? Math.round(r.avgTime) : null,
+            lastAttempt: r.lastAttempt
+        }))
+
+        res.json({ status: true, performance })
+    } catch (err) {
+        console.error(err)
+        res.json({ status: false, message: 'Unknown server error' })
+    }
+})
+
 router.post('/MADTON', requirePermission('read:db'), async (req, res) => {
     try {
         const { userID, topic } = req.body

@@ -97,6 +97,12 @@ class ServerTalker {
         return this.post('question/getRanking', { event })
     }
 
+    // --- Performance ---
+
+    static async getPerformance() {
+        return this.post('question/getPerformance')
+    }
+
     // --- Tests ---
 
     static async loadTest(testID) {
