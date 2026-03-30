@@ -585,6 +585,7 @@ router.post('/MADTON', requirePermission('read:db'), async (req, res) => {
         let quote = quotes.data[Math.floor(Math.random() * quotes.data.length)]
         let ciphertext = ''
         let plaintext = ''
+        let question
         switch(topic) {
             case 'aristocrat':
                 plaintext = quote.text.toUpperCase()
@@ -594,28 +595,124 @@ router.post('/MADTON', requirePermission('read:db'), async (req, res) => {
                 plaintext = quote.text.toUpperCase()
                 ciphertext = generatePatristocrat(plaintext)
                 break
-            case 'xenocrypt':
+            case 'xenocrypt': {
                 const spanishQuote = await fetchSpanishQuote()
                 plaintext = normalizeSpanish(spanishQuote.text)
                 ciphertext = generateAristocrat(plaintext)
                 quote = spanishQuote
                 break
+            }
+            case 'vigenere': {
+                plaintext = quote.text.toUpperCase()
+                const keyLength = 3 + Math.floor(Math.random() * 4) // 3-6 letter key
+                const key = generateRandomKey(keyLength)
+                ciphertext = generateVigenere(plaintext, key)
+                question = {
+                    prompt: `Solve this Vigenère cipher (key: ${key}) — quote by ${quote.author}`,
+                    ciphertext,
+                    secret: { plaintext },
+                    type: "Cryptography",
+                    timed: true,
+                    event: 'Codebusters',
+                    topic
+                }
+                break
+            }
+            case 'hill': {
+                plaintext = quote.text.toUpperCase()
+                const hillResult = generateHill(plaintext)
+                // Format ciphertext in 5-letter groups for readability
+                let hillCipher = hillResult.ciphertext
+                let formattedCipher = ''
+                for (let i = 0; i < hillCipher.length; i++) {
+                    formattedCipher += hillCipher[i]
+                    if ((i + 1) % 5 === 0 && i < hillCipher.length - 1) formattedCipher += ' '
+                }
+                const km = hillResult.keyMatrix
+                question = {
+                    prompt: `Solve this Hill 2×2 cipher (key matrix: [${km[0][0]},${km[0][1]}; ${km[1][0]},${km[1][1]}]) — quote by ${quote.author}`,
+                    ciphertext: formattedCipher,
+                    secret: { plaintext: hillResult.plaintext },
+                    type: "Cryptography",
+                    timed: true,
+                    event: 'Codebusters',
+                    topic,
+                    frequencyTableType: 'None'
+                }
+                break
+            }
+            case 'railfence': {
+                plaintext = quote.text.toUpperCase()
+                const rails = 2 + Math.floor(Math.random() * 3) // 2-4 rails
+                const strippedPlain = plaintext.replace(/[^A-Z]/g, '')
+                ciphertext = generateRailFence(plaintext, rails)
+                question = {
+                    prompt: `Solve this Rail Fence cipher (${rails} rails) — quote by ${quote.author}. Enter the plaintext (letters only, no spaces).`,
+                    secret: { correctAnswers: [strippedPlain] },
+                    type: "Field",
+                    timed: true,
+                    event: 'Codebusters',
+                    topic,
+                    content: `<p class="h5 text-center font-monospace">${ciphertext}</p>`
+                }
+                break
+            }
+            case 'morbit': {
+                plaintext = quote.text.toUpperCase()
+                const morbitResult = generateMorbit(plaintext)
+                // Format morbit key for display
+                const morbitKeyStr = Object.entries(morbitResult.morbitKey)
+                    .sort((a, b) => a[0] - b[0])
+                    .map(([d, p]) => `${d}=${p.replace(/x/g, 'X')}`)
+                    .join(' ')
+                const strippedPlainMorbit = plaintext.replace(/[^A-Z]/g, '')
+                question = {
+                    prompt: `Solve this Morbit cipher (key: ${morbitKeyStr}) — quote by ${quote.author}. Enter the plaintext (letters only, no spaces).`,
+                    secret: { correctAnswers: [strippedPlainMorbit] },
+                    type: "Field",
+                    timed: true,
+                    event: 'Codebusters',
+                    topic,
+                    content: `<p class="h5 text-center font-monospace">${morbitResult.ciphertext}</p>`
+                }
+                break
+            }
+            case 'pollux': {
+                plaintext = quote.text.toUpperCase()
+                const polluxResult = generatePollux(plaintext)
+                // Format pollux key for display
+                const polluxKeyStr = Object.entries(polluxResult.polluxKey)
+                    .sort((a, b) => a[0] - b[0])
+                    .map(([d, s]) => `${d}=${s === '.' ? '·' : s === '-' ? '−' : 'X'}`)
+                    .join(' ')
+                const strippedPlainPollux = plaintext.replace(/[^A-Z]/g, '')
+                question = {
+                    prompt: `Solve this Pollux cipher (key: ${polluxKeyStr}) — quote by ${quote.author}. Enter the plaintext (letters only, no spaces).`,
+                    secret: { correctAnswers: [strippedPlainPollux] },
+                    type: "Field",
+                    timed: true,
+                    event: 'Codebusters',
+                    topic,
+                    content: `<p class="h5 text-center font-monospace">${polluxResult.ciphertext}</p>`
+                }
+                break
+            }
             default:
                 plaintext = quote.text.toUpperCase()
                 ciphertext = generateAristocrat(plaintext)
                 break
         }
 
-        const question = {
-            prompt: `Solve this quote by ${quote.author}`,
-            ciphertext,
-            secret: {
-                plaintext,
-            },
-            type: "Cryptography",
-            timed: true,
-            event: 'Codebusters',
-            topic
+        if (!question) {
+            question = {
+                prompt: `Solve this quote by ${quote.author}`,
+                ciphertext,
+                secret: { plaintext },
+                type: "Cryptography",
+                timed: true,
+                event: 'Codebusters',
+                topic
+            }
         }
         res.json({
             status: true,
@@ -731,6 +828,165 @@ function shuffle(array) {
   
     return array;
   }
+
+function generateVigenere(plaintext, key) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    let ciphertext = ''
+    let keyIndex = 0
+    for (let i = 0; i < plaintext.length; i++) {
+        const charIndex = alphabet.indexOf(plaintext[i])
+        if (charIndex >= 0) {
+            const keyChar = alphabet.indexOf(key[keyIndex % key.length])
+            ciphertext += alphabet[(charIndex + keyChar) % 26]
+            keyIndex++
+        } else {
+            ciphertext += plaintext[i]
+        }
+    }
+    return ciphertext
+}
+
+function generateRandomKey(length) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    let key = ''
+    for (let i = 0; i < length; i++) {
+        key += alphabet[Math.floor(Math.random() * 26)]
+    }
+    return key
+}
+
+function generateRailFence(plaintext, rails) {
+    const stripped = plaintext.replace(/[^A-Z]/g, '')
+    const fence = Array.from({ length: rails }, () => [])
+    let rail = 0
+    let direction = 1
+    for (let i = 0; i < stripped.length; i++) {
+        fence[rail].push(stripped[i])
+        if (rail === 0) direction = 1
+        else if (rail === rails - 1) direction = -1
+        rail += direction
+    }
+    return fence.map(r => r.join('')).join('')
+}
+
+function generateMorbit(plaintext) {
+    const morseMap = {
+        'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
+        'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
+        'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+        'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+        'Y': '-.--', 'Z': '--..', ' ': 'x'
+    }
+    // Convert plaintext to morse with 'x' between letters and 'xx' between words
+    let morse = ''
+    const words = plaintext.split(' ')
+    for (let w = 0; w < words.length; w++) {
+        if (w > 0) morse += 'x'
+        for (let l = 0; l < words[w].length; l++) {
+            if (l > 0) morse += 'x'
+            const ch = words[w][l]
+            if (morseMap[ch]) morse += morseMap[ch]
+        }
+    }
+    // Pad morse to even length
+    if (morse.length % 2 !== 0) morse += 'x'
+    // Create morbit key: random assignment of digits 1-9 to the 9 possible pairs
+    const pairs = ['..', '.-', '.x', '-.', '--', '-x', 'x.', 'x-', 'xx']
+    const digits = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    const pairToDigit = {}
+    const morbitKey = {}
+    for (let i = 0; i < pairs.length; i++) {
+        pairToDigit[pairs[i]] = digits[i]
+        morbitKey[digits[i]] = pairs[i]
+    }
+    // Encode morse pairs to digits
+    let ciphertext = ''
+    for (let i = 0; i < morse.length; i += 2) {
+        ciphertext += pairToDigit[morse.substring(i, i + 2)]
+    }
+    return { ciphertext, morbitKey }
+}
+
+function generatePollux(plaintext) {
+    const morseMap = {
+        'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
+        'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
+        'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+        'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+        'Y': '-.--', 'Z': '--..', ' ': 'x'
+    }
+    // Convert to morse with x separators
+    let morse = ''
+    const words = plaintext.split(' ')
+    for (let w = 0; w < words.length; w++) {
+        if (w > 0) morse += 'x'
+        for (let l = 0; l < words[w].length; l++) {
+            if (l > 0) morse += 'x'
+            const ch = words[w][l]
+            if (morseMap[ch]) morse += morseMap[ch]
+        }
+    }
+    // Assign digits 0-9 randomly to dot, dash, or x (at least one digit per symbol)
+    const digits = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    const polluxKey = {}
+    // Ensure at least one digit for each symbol type
+    polluxKey[digits[0]] = '.'
+    polluxKey[digits[1]] = '-'
+    polluxKey[digits[2]] = 'x'
+    // Randomly assign remaining digits
+    const symbols = ['.', '-', 'x']
+    for (let i = 3; i < 10; i++) {
+        polluxKey[digits[i]] = symbols[Math.floor(Math.random() * 3)]
+    }
+    // Build reverse map: symbol -> array of possible digits
+    const symbolToDigits = { '.': [], '-': [], 'x': [] }
+    for (const [digit, sym] of Object.entries(polluxKey)) {
+        symbolToDigits[sym].push(digit)
+    }
+    // Encode morse to digits using random selection from available digits
+    let ciphertext = ''
+    for (const ch of morse) {
+        const options = symbolToDigits[ch]
+        ciphertext += options[Math.floor(Math.random() * options.length)]
+    }
+    return { ciphertext, polluxKey }
+}
+
+function generateHill(plaintext) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    const stripped = plaintext.replace(/[^A-Z]/g, '')
+    // Pad to even length
+    let padded = stripped
+    if (padded.length % 2 !== 0) padded += 'X'
+    // Generate a 2x2 key matrix with a valid inverse mod 26
+    let keyMatrix, det
+    do {
+        keyMatrix = [
+            [Math.floor(Math.random() * 26), Math.floor(Math.random() * 26)],
+            [Math.floor(Math.random() * 26), Math.floor(Math.random() * 26)]
+        ]
+        det = ((keyMatrix[0][0] * keyMatrix[1][1] - keyMatrix[0][1] * keyMatrix[1][0]) % 26 + 26) % 26
+    } while (det === 0 || gcd(det, 26) !== 1)
+    // Encrypt pairs
+    let ciphertext = ''
+    for (let i = 0; i < padded.length; i += 2) {
+        const p1 = alphabet.indexOf(padded[i])
+        const p2 = alphabet.indexOf(padded[i + 1])
+        const c1 = (keyMatrix[0][0] * p1 + keyMatrix[0][1] * p2) % 26
+        const c2 = (keyMatrix[1][0] * p1 + keyMatrix[1][1] * p2) % 26
+        ciphertext += alphabet[c1] + alphabet[c2]
+    }
+    return { ciphertext, keyMatrix, plaintext: padded }
+}
+
+function gcd(a, b) {
+    a = Math.abs(a)
+    b = Math.abs(b)
+    while (b) {
+        [a, b] = [b, a % b]
+    }
+    return a
+}
 
 function checkSolution(question, solution) {
     let correct

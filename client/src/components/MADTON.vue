@@ -49,7 +49,7 @@ export default {
                 submittionReply: '',
             },
             selectedTopic: 'aristocrat',
-            topics: ['aristocrat', 'patristocrat', 'xenocrypt'],
+            topics: ['aristocrat', 'patristocrat', 'xenocrypt', 'vigenere', 'hill', 'morbit', 'pollux', 'railfence'],
             questionWrapperKey: 0,
             solvedJustNow: 0,
 
