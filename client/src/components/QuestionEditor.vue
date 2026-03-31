@@ -92,7 +92,8 @@
         <input class="form-check-input m-2" id="clearAfterAdding" v-model="clearAfterAdding" type="checkbox">
       </div>
 
-      <button class="btn btn-primary mx-4" v-if="permissions.add" @click="addQuestion()">Add question to the database</button>
+      <button class="btn btn-primary mx-4" v-if="editingId && permissions.manage" @click="updateQuestion()">Update question</button>
+      <button class="btn btn-primary mx-4" v-else-if="permissions.add" @click="addQuestion()">Add question to the database</button>
       <p v-if="messages.addQuestion">{{messages.addQuestion}}</p>
     </div>
 
@@ -133,11 +134,29 @@ export default {
       this.events = await ServerTalker.getEvents()
       this.permissions.add = ServerTalker.hasPermission('add:db')
       this.permissions.propose = ServerTalker.hasPermission('propose:db')
+      this.permissions.manage = ServerTalker.hasPermission('manage:db')
+
+      // Load existing question for editing
+      const params = new URLSearchParams(window.location.search)
+      const editId = params.get('id')
+      if (editId && this.permissions.manage) {
+        const q = await ServerTalker.loadQuestion(editId)
+        if (q) {
+          this.editingId = editId
+          this.question = {
+            ...q,
+            checklist: { event: true, topic: true, type: true, constructor: true }
+          }
+          // Set up the constructor and topics
+          this.constructor = q.type + 'Constructor'
+          const event = this.events.find(e => e.name === q.event)
+          if (event) this.topics = event.topics
+          this.showPreview = true
+        }
+      }
     } catch(err) {
       this.error = err.message
     }
-    
-
   },
   data() {
     return {
@@ -183,8 +202,10 @@ export default {
       permissions: {
         add: false,
         propose: false,
+        manage: false,
       },
 
+      editingId: null,
       clearAfterAdding: true,
     }
   },
@@ -248,6 +269,19 @@ export default {
       } catch(err) {
         this.error = err.message
         this.messages.submittionReply = err.message
+      }
+    },
+
+    async updateQuestion() {
+      try {
+        const q = { ...this.question }
+        delete q.reply
+        delete q.solution
+        delete q.checklist
+        const reply = await ServerTalker.updateQuestion(this.editingId, q)
+        this.messages.addQuestion = reply.message
+      } catch(err) {
+        this.messages.addQuestion = err.message || 'Update failed'
       }
     },
 

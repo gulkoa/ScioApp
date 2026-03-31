@@ -60,8 +60,8 @@ class ServerTalker {
         return data.question
     }
 
-    static async loadLibrary(event, topicsNames) {
-        const data = await this.post('question/loadLibrary', { event, topicsNames })
+    static async loadLibrary(event, topicsNames, showHidden = false) {
+        const data = await this.post('question/loadLibrary', { event, topicsNames, showHidden })
         return data.questions
     }
 
@@ -75,6 +75,10 @@ class ServerTalker {
 
     static async addQuestion(question) {
         return this.post('question/addQuestion', { question })
+    }
+
+    static async updateQuestion(questionID, question) {
+        return this.post('question/updateQuestion', { questionID, question })
     }
 
     // --- Permissions ---

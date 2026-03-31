@@ -2,7 +2,17 @@ const express = require('express')
 const mongodb = require('mongodb')
 const crypto = require('crypto')
 const axios = require('axios')
+const rateLimit = require('express-rate-limit')
 const { requirePermission, requireAdmin } = require('../../middleware/auth')
+
+const submitLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    keyGenerator: (req) => req.user?.id || 'anon',
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { status: false, message: 'Too many submissions. Please slow down.' }
+})
 
 function gravatarUrl(email, size) {
     const hash = crypto.createHash('md5').update(email.trim().toLowerCase()).digest('hex')
@@ -10,6 +20,16 @@ function gravatarUrl(email, size) {
 }
 let client = null
 let db = {}
+
+// In-memory store for MADTON questions (secret never sent to client)
+const madtonQuestions = new Map()
+
+function storeMadtonQuestion(question) {
+    const id = new mongodb.ObjectId().toString()
+    madtonQuestions.set(id, question)
+    return id
+}
+
 async function setUp(DBclient) {
     client = DBclient
     const sdb = client.db('scioapp')
@@ -73,7 +93,7 @@ router.post('/loadFeed', requirePermission('read:db'), async (req, res) => {
 //jwtAuthz(['read:db'])
 router.post('/loadLibrary', requirePermission('read:db'), async (req, res) => {
     try {
-        const {event, topicsNames, userID} = req.body
+        const {event, topicsNames, userID, showHidden} = req.body
         if (!userID) {
             res.send({
                 status: false,
@@ -81,7 +101,14 @@ router.post('/loadLibrary', requirePermission('read:db'), async (req, res) => {
             })
             return
         }
-        let questions = await db.questions.find({event, topic: {$in: topicsNames}, showInLibrary: true}).toArray()
+        const filter = {event, topic: {$in: topicsNames}}
+        // Only users with manage:db can see hidden questions
+        const userPerms = req.user?.permissions || []
+        const canManage = ['admin', 'captain'].includes(req.user?.role) || userPerms.includes('manage:db')
+        if (!showHidden || !canManage) {
+            filter.showInLibrary = true
+        }
+        let questions = await db.questions.find(filter).toArray()
         if (questions.length === 0) {
             res.json({status: false, message: "No questions found"})
             return
@@ -156,7 +183,10 @@ router.post('/loadQuestion', requirePermission('read:db'), async (req, res) => {
             res.json({status: false, message: "Question not found"})
         }
         else {
-            delete question.secret
+            // Only expose secret to users who can edit questions
+            const userPerms = req.user?.permissions || []
+            const canManage = ['admin', 'captain'].includes(req.user?.role) || userPerms.includes('manage:db')
+            if (!canManage) delete question.secret
             res.json({
                 status: true,
                 question
@@ -257,7 +287,7 @@ router.post('/loadTests', requirePermission('read:db'), async (req, res) => {
 })
 
 //jwtAuthz(['read:db'])
-router.post('/submitSolution', requirePermission('read:db'), async (req, res) => {
+router.post('/submitSolution', submitLimiter, requirePermission('read:db'), async (req, res) => {
     try {
         const {questionID, userID, solution} = req.body
         if (!userID) {
@@ -267,14 +297,24 @@ router.post('/submitSolution', requirePermission('read:db'), async (req, res) =>
             })
             return
         }
-        let question = await db.questions.findOne({_id: new mongodb.ObjectId(questionID)})
+        // Check in-memory MADTON store first, then DB
+        const isMadton = madtonQuestions.has(questionID)
+        let question
+        if (isMadton) {
+            question = madtonQuestions.get(questionID)
+        } else {
+            question = await db.questions.findOne({_id: new mongodb.ObjectId(questionID)})
+        }
+        if (!question) {
+            return res.json({ status: false, message: 'Question not found or expired' })
+        }
 
         const checkReport = checkSolution(question, solution)
 
         const submission = {
             timestamp: new Date(),
-            questionID,
-            source: 'question',
+            questionID: isMadton ? null : questionID,
+            source: isMadton ? 'madton' : 'question',
             userID,
             userSolution: solution,
             event: question.event,
@@ -283,16 +323,22 @@ router.post('/submitSolution', requirePermission('read:db'), async (req, res) =>
         if (!checkReport.continue) {
             await db.submissions.insertOne(submission)
 
-            try {
-                const result = await db.submissions.aggregate([
-                    {$match: {questionID: questionID, "checkReport.correct": true}},
-                    {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
-                ]).toArray()
-                if (result.length > 0) {
-                    await db.questions.updateOne({_id: new mongodb.ObjectId(questionID)}, {$set: {averageTime: result[0].averageTime, standardDeviation: result[0].standardDeviation}})
+            // Consume MADTON question so it can't be resubmitted
+            if (isMadton) madtonQuestions.delete(questionID)
+
+            // Update cached stats for regular questions only
+            if (!isMadton) {
+                try {
+                    const result = await db.submissions.aggregate([
+                        {$match: {questionID: questionID, "checkReport.correct": true}},
+                        {$group: {_id: "$questionID", averageTime: {$avg: "$userSolution.time"}, standardDeviation: {$stdDevPop: "$userSolution.time"}}}
+                    ]).toArray()
+                    if (result.length > 0) {
+                        await db.questions.updateOne({_id: new mongodb.ObjectId(questionID)}, {$set: {averageTime: result[0].averageTime, standardDeviation: result[0].standardDeviation}})
+                    }
+                } catch (aggErr) {
+                    console.error(aggErr)
                 }
-            } catch (aggErr) {
-                console.error(aggErr)
             }
         }
     
@@ -310,37 +356,14 @@ router.post('/submitSolution', requirePermission('read:db'), async (req, res) =>
     }
 })
 
+// Editor preview — checks solution without saving anything
 router.post('/mockSubmitSolution', async (req, res) => {
     try {
-        let question = req.body
-        const solution = req.body.solution
-        const userID = req.body.userID
-        const checkReport = checkSolution(question, solution)
-
-        // Save MADTON submissions so they count on the leaderboard
-        if (!checkReport.continue && userID && question.event) {
-            await db.submissions.insertOne({
-                timestamp: new Date(),
-                questionID: null,
-                source: 'madton',
-                userID,
-                userSolution: solution,
-                event: question.event,
-                checkReport
-            })
-        }
-
-        res.json({
-            status: true,
-            ...checkReport
-        })
-
+        const checkReport = checkSolution(req.body, req.body.solution)
+        res.json({ status: true, ...checkReport })
     } catch(err) {
         console.error(err)
-        res.json({
-            status: false,
-            message: "Unknown server error"
-        })
+        res.json({ status: false, message: "Unknown server error" })
     }
 })
 
@@ -367,6 +390,29 @@ router.post('/addQuestion', requirePermission('add:db'), async (req, res) => {
             status: false,
             message: "Unknown server error"
         })
+    }
+})
+
+// Update an existing question (manage:db)
+router.post('/updateQuestion', requirePermission('manage:db'), async (req, res) => {
+    try {
+        const { questionID, question } = req.body
+        if (!questionID) return res.json({ status: false, message: 'Question ID is required' })
+        // Strip fields that shouldn't be overwritten
+        delete question._id
+        delete question.submittedBy
+        delete question.createdAt
+        delete question.checklist
+        delete question.solution
+        delete question.reply
+        await db.questions.updateOne(
+            { _id: new mongodb.ObjectId(questionID) },
+            { $set: question }
+        )
+        res.json({ status: true, message: 'Question updated!' })
+    } catch(err) {
+        console.error(err)
+        res.json({ status: false, message: "Unknown server error" })
     }
 })
 
@@ -642,20 +688,29 @@ router.post('/MADTON', requirePermission('read:db'), async (req, res) => {
                 break
         }
 
+        // Store in memory — secret never sent to client
         const question = {
             prompt: `Solve this quote by ${quote.author}`,
             ciphertext,
-            secret: {
-                plaintext,
-            },
+            secret: { plaintext },
             type: "Cryptography",
             timed: true,
             event: 'Codebusters',
             topic
         }
+        const madtonId = storeMadtonQuestion(question)
+
         res.json({
             status: true,
-            question
+            question: {
+                _id: madtonId,
+                prompt: question.prompt,
+                ciphertext: question.ciphertext,
+                type: question.type,
+                timed: question.timed,
+                event: question.event,
+                topic: question.topic
+            }
         })
     }
     catch(err) {

@@ -26,15 +26,20 @@
             </div>
             </div>
 
-            <!-- refresh question button -->
-            <p class="ms-auto fs-6 m-1">{{messages.loadQuestion}}</p>
-            <!-- <button class="btn btn-success ms-auto" @click="refreshQuestions()" :disabled="this.selectedTopics.length < 1">Load</button> -->
+            <!-- show hidden toggle (manage:db or admin/captain) -->
+            <div v-if="canManage" class="form-check form-switch ms-auto me-3">
+                <input class="form-check-input" type="checkbox" id="showHidden" v-model="showHidden" @change="refreshQuestions()">
+                <label class="form-check-label" for="showHidden">Show hidden</label>
+            </div>
+
+            <p class="fs-6 m-1" :class="{ 'ms-auto': !canManage }">{{messages.loadQuestion}}</p>
         </div>
         
 
 
         <!-- question cards -->
-        <button v-for="(question, index) in questions" class="card card-body text-dark btn btn-outline-light p-1 questionCard" @click.left="openQuestion(index, false)" @click.middle="openQuestion(index, true)" :key="index">
+        <div v-for="(question, index) in questions" class="card card-body p-1 questionCard position-relative" :key="index">
+            <button class="btn btn-outline-light text-dark w-100" @click.left="openQuestion(index, false)" @click.middle="openQuestion(index, true)">
             <p class="text-muted card-title">{{question.topic}}</p>
             <p class="h4 card-body">{{question.prompt}}</p>
             <div class="hstack mx-auto">
@@ -44,9 +49,17 @@
                 <div v-if="question.averageTime" class="badge rounded-pill bg-warning text-dark m-1">
                     <p class="m-1">Average solution time: {{Math.floor(question.averageTime / 600)}}:{{question.averageTime / 10 % 60 >= 10 ? Math.floor(question.averageTime / 10) % 60 : "0" + Math.floor(question.averageTime / 10) % 60}}</p>
                 </div>
+                <div v-if="showHidden && !question.showInLibrary" class="badge rounded-pill bg-secondary m-1">
+                    <p class="m-1">Hidden from library</p>
+                </div>
+                <div v-if="showHidden && !question.showInFeed" class="badge rounded-pill bg-secondary m-1">
+                    <p class="m-1">Hidden from feed</p>
+                </div>
             </div>
-            
-        </button>
+            </button>
+            <a v-if="canManage" class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
+               :href="'/question/editor?id=' + question._id">Edit</a>
+        </div>
 
         <!-- loading -->
         <div v-if="loading" class="lds-ripple"><div></div><div></div></div>
@@ -83,20 +96,22 @@ export default {
                 loadQuestion: 'Please select the event and topics',
             },
             questions: [],
-            permissions: {
-                manage: false,
-            }
+            showHidden: false
         }
     },
-    created() {
-        
+    computed: {
+        canManage() {
+            const user = this.$auth.user
+            if (!user) return false
+            if (['admin', 'captain'].includes(user.role)) return true
+            return (user.permissions || []).includes('manage:db')
+        }
     },
     async mounted() {
 
         this.loading = true
         try {
             this.events = await ServerTalker.getEvents()
-            this.permissions.manage = ServerTalker.hasPermission('manage:db')
             for (let event of this.events)
                 for (let topic of event.topics)
                 topic.checked = true
@@ -127,7 +142,7 @@ export default {
             this.loading = true
             this.questions = []
             try {
-                this.questions = await ServerTalker.loadLibrary(this.selectedEvent.name, this.selectedTopics.map(topic => topic.name) || [])
+                this.questions = await ServerTalker.loadLibrary(this.selectedEvent.name, this.selectedTopics.map(topic => topic.name) || [], this.showHidden)
                 this.messages.loadQuestion = ''
                 this.$forceUpdate()
             } catch(err) {
