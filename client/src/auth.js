@@ -41,9 +41,10 @@ export const useAuth = () => {
           })
           if (res.data.status) {
             this.user = res.data.user
-            this.token = res.data.token // refreshed token with latest permissions
+            this.token = res.data.token
             localStorage.setItem('token', res.data.token)
             this.isAuthenticated = true
+            this._startRefresh()
           } else {
             this._clearSession()
           }
@@ -62,6 +63,7 @@ export const useAuth = () => {
             this.user = res.data.user
             this.isAuthenticated = true
             localStorage.setItem('token', res.data.token)
+            this._startRefresh()
           }
           return res.data
         } catch {
@@ -163,7 +165,33 @@ export const useAuth = () => {
         window.location.href = '/'
       },
 
+      // Silently refresh token every hour
+      _startRefresh() {
+        if (this._refreshTimer) clearInterval(this._refreshTimer)
+        this._refreshTimer = setInterval(() => this._refresh(), 60 * 60 * 1000)
+      },
+
+      async _refresh() {
+        if (!this.token) return
+        try {
+          const res = await axios.get(url + 'me', {
+            headers: { Authorization: 'Bearer ' + this.token }
+          })
+          if (res.data.status) {
+            this.user = res.data.user
+            this.token = res.data.token
+            localStorage.setItem('token', res.data.token)
+          } else {
+            this._clearSession()
+          }
+        } catch {
+          // Network error — don't log out, try again next interval
+        }
+      },
+
       _clearSession() {
+        if (this._refreshTimer) clearInterval(this._refreshTimer)
+        this._refreshTimer = null
         this.token = null
         this.user = null
         this.isAuthenticated = false
