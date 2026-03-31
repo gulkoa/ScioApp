@@ -16,13 +16,17 @@
           </div>
         </div>
         <span v-if="weekLabel" class="text-muted">{{ weekLabel }}</span>
-        <button
-          class="btn btn-sm ms-auto confetti-btn"
-          :class="isFirstPlace ? 'btn-warning' : 'btn-outline-secondary'"
-          :disabled="!isFirstPlace"
-          title="You must be in 1st place to launch confetti"
-          @click="launchConfetti"
-        >🎉 Celebrate!</button>
+        <span
+          class="ms-auto confetti-wrapper"
+          :title="isFirstPlace ? '' : 'You must be in 1st place to launch confetti'"
+        >
+          <button
+            class="btn btn-sm confetti-btn"
+            :class="isFirstPlace ? 'btn-warning' : 'btn-outline-secondary'"
+            :disabled="!isFirstPlace"
+            @click="launchConfetti"
+          >🎉 Celebrate!</button>
+        </span>
       </div>
     </div>
 
@@ -221,9 +225,13 @@ export default {
   height: 64px;
   border-width: 3px;
 }
+.confetti-wrapper {
+  display: inline-block;
+  cursor: not-allowed;
+}
 .confetti-btn:disabled {
   opacity: 0.4;
-  cursor: not-allowed;
+  pointer-events: none;
 }
 .table-avatar {
   width: 28px;
