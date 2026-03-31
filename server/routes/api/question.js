@@ -19,13 +19,6 @@ async function setUp(DBclient) {
     db.tests = client.db('tests').collection('tests')
     db.testSubmissions = client.db('tests').collection('submissions')
     db.events = client.db('config').collection('events')
-
-    // Seed events from events.json if the collection is empty
-    const count = await db.events.countDocuments()
-    if (count === 0) {
-        const seed = require('../../events.json')
-        await db.events.insertMany(seed)
-    }
 }
 
 const router = express.Router()
