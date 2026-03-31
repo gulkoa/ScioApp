@@ -81,6 +81,13 @@ class ServerTalker {
         return this.post('question/updateQuestion', { questionID, question })
     }
 
+    static async deleteQuestion(questionID) {
+        const res = await axios.delete(url + 'question/deleteQuestion/' + questionID, {
+            headers: this._headers()
+        })
+        return res.data
+    }
+
     // --- Permissions ---
 
     static hasPermission(permission) {

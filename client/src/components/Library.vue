@@ -55,8 +55,11 @@
                     <p class="m-1">Hidden from feed</p>
                 </div>
             </div>
-            <a v-if="canManage" class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
-               :href="'/question/editor?id=' + question._id" @click.stop>Edit</a>
+            <div v-if="canManage" class="position-absolute top-0 end-0 m-2 d-flex gap-1" @click.stop>
+                <a class="btn btn-sm btn-outline-secondary"
+                   :href="'/question/editor?id=' + question._id">Edit</a>
+                <button class="btn btn-sm btn-outline-danger" @click="deleteQuestion(question, index)">Delete</button>
+            </div>
         </button>
 
         <!-- loading -->
@@ -169,6 +172,19 @@ export default {
             console.log(this.selectedEvent.topics[topicId].checked)
             this.selectedEvent.topics[topicId].checked = !this.selectedEvent.topics[topicId].checked
             this.updateTopics()
+        },
+        async deleteQuestion(question, index) {
+            if (!confirm(`Delete "${question.prompt}"?`)) return
+            try {
+                const result = await ServerTalker.deleteQuestion(question._id)
+                if (result.status) {
+                    this.questions.splice(index, 1)
+                } else {
+                    this.messages.loadQuestion = result.message
+                }
+            } catch(err) {
+                this.messages.loadQuestion = err.message || 'Delete failed'
+            }
         },
         async updateSelectedTopicsTitle() {
             if (this.selectedTopics.length === 0) {

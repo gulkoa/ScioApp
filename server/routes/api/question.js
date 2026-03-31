@@ -416,6 +416,17 @@ router.post('/updateQuestion', requirePermission('manage:db'), async (req, res) 
     }
 })
 
+// Delete a question (manage:db)
+router.delete('/deleteQuestion/:id', requirePermission('manage:db'), async (req, res) => {
+    try {
+        await db.questions.deleteOne({ _id: new mongodb.ObjectId(req.params.id) })
+        res.json({ status: true, message: 'Question deleted' })
+    } catch(err) {
+        console.error(err)
+        res.json({ status: false, message: "Unknown server error" })
+    }
+})
+
 router.post('/addTest', requirePermission('add:db'), async (req, res) => {
     try {
         const test = req.body.test
