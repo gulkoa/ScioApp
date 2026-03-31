@@ -59,6 +59,13 @@
           <p class="fw-bold mb-0 mt-2">{{ users[0].name }}</p>
           <p class="text-muted small mb-0">{{ users[0].solved }} solved</p>
           <p class="h4 mb-0">{{ users[0].score.toLocaleString() }}</p>
+          <button
+            class="btn btn-sm mt-2 confetti-btn"
+            :class="isFirstPlace ? 'btn-warning' : 'btn-outline-secondary'"
+            :disabled="!isFirstPlace"
+            :title="isFirstPlace ? 'Celebrate!' : 'Only the 1st place winner can celebrate'"
+            @click="launchConfetti"
+          >🎉 Celebrate!</button>
         </div>
 
         <!-- 3rd place -->
@@ -105,6 +112,7 @@
 
 <script>
 import ServerTalker from '../ServerTalker'
+import confetti from 'canvas-confetti'
 
 export default {
   name: 'Ranking',
@@ -123,6 +131,9 @@ export default {
   computed: {
     currentUserId() {
       return this.$auth.user ? this.$auth.user.id : null
+    },
+    isFirstPlace() {
+      return this.users && this.users.length > 0 && this.currentUserId === this.users[0].userID
     }
   },
   async mounted() {
@@ -148,6 +159,15 @@ export default {
         this.users = []
       }
       this.loading = false
+    },
+
+    launchConfetti() {
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#FFD700', '#FFA000', '#FF6B6B', '#4CAF50', '#2196F3']
+      })
     },
 
     formatAvgTime(user) {
@@ -200,6 +220,10 @@ export default {
   width: 64px;
   height: 64px;
   border-width: 3px;
+}
+.confetti-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .table-avatar {
   width: 28px;
