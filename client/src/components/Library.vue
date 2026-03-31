@@ -38,8 +38,7 @@
 
 
         <!-- question cards -->
-        <div v-for="(question, index) in questions" class="card card-body p-1 questionCard position-relative" :key="index">
-            <button class="btn btn-outline-light text-dark w-100" @click.left="openQuestion(index, false)" @click.middle="openQuestion(index, true)">
+        <button v-for="(question, index) in questions" class="card card-body text-dark btn btn-outline-light p-1 questionCard position-relative" @click.left="openQuestion(index, false)" @click.middle="openQuestion(index, true)" :key="index">
             <p class="text-muted card-title">{{question.topic}}</p>
             <p class="h4 card-body">{{question.prompt}}</p>
             <div class="hstack mx-auto">
@@ -56,10 +55,9 @@
                     <p class="m-1">Hidden from feed</p>
                 </div>
             </div>
-            </button>
             <a v-if="canManage" class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
-               :href="'/question/editor?id=' + question._id">Edit</a>
-        </div>
+               :href="'/question/editor?id=' + question._id" @click.stop>Edit</a>
+        </button>
 
         <!-- loading -->
         <div v-if="loading" class="lds-ripple"><div></div><div></div></div>
