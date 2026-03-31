@@ -15,7 +15,14 @@
                     @click="selectEvent(event)">{{ event.name }}</button>
           </div>
         </div>
-        <span v-if="weekLabel" class="text-muted ms-auto">{{ weekLabel }}</span>
+        <span v-if="weekLabel" class="text-muted">{{ weekLabel }}</span>
+        <button
+          class="btn btn-sm ms-auto confetti-btn"
+          :class="isFirstPlace ? 'btn-warning' : 'btn-outline-secondary'"
+          :disabled="!isFirstPlace"
+          title="You must be in 1st place to launch confetti"
+          @click="launchConfetti"
+        >🎉 Celebrate!</button>
       </div>
     </div>
 
@@ -59,13 +66,6 @@
           <p class="fw-bold mb-0 mt-2">{{ users[0].name }}</p>
           <p class="text-muted small mb-0">{{ users[0].solved }} solved</p>
           <p class="h4 mb-0">{{ users[0].score.toLocaleString() }}</p>
-          <button
-            class="btn btn-sm mt-2 confetti-btn"
-            :class="isFirstPlace ? 'btn-warning' : 'btn-outline-secondary'"
-            :disabled="!isFirstPlace"
-            :title="isFirstPlace ? 'Celebrate!' : 'Only the 1st place winner can celebrate'"
-            @click="launchConfetti"
-          >🎉 Celebrate!</button>
         </div>
 
         <!-- 3rd place -->
