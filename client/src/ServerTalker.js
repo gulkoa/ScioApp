@@ -131,7 +131,27 @@ class ServerTalker {
         return this.post('question/encrypt', { plaintext, topic })
     }
 
-    // --- Admin ---
+    // --- Admin: Events ---
+
+    static async addEvent(name) {
+        return this.post('question/addEvent', { name, topics: [] })
+    }
+
+    static async updateEvent(eventId, name, topics) {
+        const res = await axios.patch(url + 'question/updateEvent/' + eventId, { name, topics }, {
+            headers: this._headers()
+        })
+        return res.data
+    }
+
+    static async deleteEvent(eventId) {
+        const res = await axios.delete(url + 'question/deleteEvent/' + eventId, {
+            headers: this._headers()
+        })
+        return res.data
+    }
+
+    // --- Admin: Users ---
 
     static async getUsers() {
         return this.get('auth/admin/users')

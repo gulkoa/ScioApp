@@ -5,6 +5,53 @@
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
 
+    <!-- Events management (admin only) -->
+    <div v-if="isAdmin" class="card mb-4">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h5 class="mb-0">Events</h5>
+        <div class="d-flex gap-2">
+          <input v-model="newEventName" class="form-control form-control-sm" style="width:200px" placeholder="New event name">
+          <button class="btn btn-sm btn-primary" @click="addEvent" :disabled="!newEventName.trim()">Add</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div v-if="eventsLoading" class="text-center my-3">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+        </div>
+        <div v-else-if="events.length === 0" class="text-muted">No events configured.</div>
+        <div v-else class="accordion" id="eventsAccordion">
+          <div v-for="event in events" :key="event._id" class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" :data-bs-target="'#event-' + event._id">
+                {{ event.name }}
+                <span class="badge bg-secondary ms-2">{{ event.topics.length }} topics</span>
+              </button>
+            </h2>
+            <div :id="'event-' + event._id" class="accordion-collapse collapse" data-bs-parent="#eventsAccordion">
+              <div class="accordion-body">
+                <div class="d-flex flex-wrap gap-1 mb-3">
+                  <span v-for="(topic, i) in event.topics" :key="i"
+                        class="badge bg-primary d-flex align-items-center gap-1" style="font-size:0.85em">
+                    {{ topic.name }}
+                    <button class="btn-close btn-close-white" style="font-size:0.5em"
+                            @click="removeTopic(event, i)"></button>
+                  </span>
+                  <span v-if="event.topics.length === 0" class="text-muted">No topics yet</span>
+                </div>
+                <div class="d-flex gap-2">
+                  <input v-model="newTopicNames[event._id]" class="form-control form-control-sm" style="width:200px"
+                         placeholder="New topic name" @keyup.enter="addTopic(event)">
+                  <button class="btn btn-sm btn-outline-primary" @click="addTopic(event)">Add topic</button>
+                  <button class="btn btn-sm btn-outline-danger ms-auto" @click="deleteEvent(event)">Delete event</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="loading" class="text-center my-5">
       <div class="spinner-border text-primary"></div>
     </div>
@@ -88,7 +135,11 @@ export default {
       loading: true,
       error: null,
       success: null,
-      allPermissions: ['read:db', 'add:db', 'propose:db', 'read:reports', 'manage:db', 'manage:ec', 'manage:c', 'manage:coaches']
+      allPermissions: ['read:db', 'add:db', 'propose:db', 'read:reports', 'manage:db', 'manage:ec', 'manage:c', 'manage:coaches'],
+      events: [],
+      eventsLoading: true,
+      newEventName: '',
+      newTopicNames: {}
     }
   },
   computed: {
@@ -104,6 +155,7 @@ export default {
   },
   async created() {
     await this.loadUsers()
+    if (this.isAdmin) await this.loadEvents()
   },
   methods: {
     async loadUsers() {
@@ -163,6 +215,72 @@ export default {
       if (result.status) {
         this.users = this.users.filter(u => u.id !== user.id)
         this.success = `${user.name} deleted`
+      } else {
+        this.error = result.message
+      }
+    },
+
+    // --- Events ---
+
+    async loadEvents() {
+      this.eventsLoading = true
+      try {
+        this.events = await ServerTalker.getEvents()
+      } catch (err) {
+        this.error = err.message || 'Failed to load events'
+      }
+      this.eventsLoading = false
+    },
+
+    async addEvent() {
+      const name = this.newEventName.trim()
+      if (!name) return
+      this.clearMessages()
+      const result = await ServerTalker.addEvent(name)
+      if (result.status) {
+        this.newEventName = ''
+        await this.loadEvents()
+        this.success = `Event "${name}" added`
+      } else {
+        this.error = result.message
+      }
+    },
+
+    async addTopic(event) {
+      const name = (this.newTopicNames[event._id] || '').trim()
+      if (!name) return
+      this.clearMessages()
+      const topics = [...event.topics, { name }]
+      const result = await ServerTalker.updateEvent(event._id, event.name, topics)
+      if (result.status) {
+        event.topics = topics
+        this.$set(this.newTopicNames, event._id, '')
+        this.success = `Topic "${name}" added to ${event.name}`
+      } else {
+        this.error = result.message
+      }
+    },
+
+    async removeTopic(event, index) {
+      this.clearMessages()
+      const removed = event.topics[index].name
+      const topics = event.topics.filter((_, i) => i !== index)
+      const result = await ServerTalker.updateEvent(event._id, event.name, topics)
+      if (result.status) {
+        event.topics = topics
+        this.success = `Topic "${removed}" removed from ${event.name}`
+      } else {
+        this.error = result.message
+      }
+    },
+
+    async deleteEvent(event) {
+      if (!confirm(`Delete event "${event.name}" and all its topics?`)) return
+      this.clearMessages()
+      const result = await ServerTalker.deleteEvent(event._id)
+      if (result.status) {
+        this.events = this.events.filter(e => e._id !== event._id)
+        this.success = `Event "${event.name}" deleted`
       } else {
         this.error = result.message
       }

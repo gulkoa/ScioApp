@@ -2,7 +2,7 @@ const express = require('express')
 const mongodb = require('mongodb')
 const crypto = require('crypto')
 const axios = require('axios')
-const { requirePermission } = require('../../middleware/auth')
+const { requirePermission, requireAdmin } = require('../../middleware/auth')
 
 function gravatarUrl(email, size) {
     const hash = crypto.createHash('md5').update(email.trim().toLowerCase()).digest('hex')
@@ -10,7 +10,7 @@ function gravatarUrl(email, size) {
 }
 let client = null
 let db = {}
-function setUp(DBclient) {
+async function setUp(DBclient) {
     client = DBclient
     db.questions = client.db('questions').collection('questions0')
     db.submissions = client.db('submissions').collection('submissions0')
@@ -18,6 +18,14 @@ function setUp(DBclient) {
     db.ranking = client.db('users').collection('ranking')
     db.tests = client.db('tests').collection('tests')
     db.testSubmissions = client.db('tests').collection('submissions')
+    db.events = client.db('config').collection('events')
+
+    // Seed events from events.json if the collection is empty
+    const count = await db.events.countDocuments()
+    if (count === 0) {
+        const seed = require('../../events.json')
+        await db.events.insertMany(seed)
+    }
 }
 
 const router = express.Router()
@@ -438,16 +446,52 @@ router.post('/submitTest', requirePermission('read:db'), async (req, res) => {
 
 router.get('/getEvents', async (req, res) => {
     try {
-        let events = require('../../events.json')
-        res.json({
-            events
-        })
+        const events = await db.events.find({}).toArray()
+        res.json({ events })
     } catch(err) {
         console.error(err)
-        res.json({
-            status: false,
-            message: "Unknown server error"
-        })
+        res.json({ status: false, message: "Unknown server error" })
+    }
+})
+
+// Admin: add a new event
+router.post('/addEvent', requireAdmin, async (req, res) => {
+    try {
+        const { name, topics } = req.body
+        if (!name) return res.json({ status: false, message: 'Event name is required' })
+        const existing = await db.events.findOne({ name })
+        if (existing) return res.json({ status: false, message: 'Event already exists' })
+        await db.events.insertOne({ name, topics: topics || [] })
+        res.json({ status: true, message: 'Event added' })
+    } catch(err) {
+        console.error(err)
+        res.json({ status: false, message: "Unknown server error" })
+    }
+})
+
+// Admin: update an event (rename or update topics)
+router.patch('/updateEvent/:id', requireAdmin, async (req, res) => {
+    try {
+        const { name, topics } = req.body
+        const update = {}
+        if (name !== undefined) update.name = name
+        if (topics !== undefined) update.topics = topics
+        await db.events.updateOne({ _id: new mongodb.ObjectId(req.params.id) }, { $set: update })
+        res.json({ status: true, message: 'Event updated' })
+    } catch(err) {
+        console.error(err)
+        res.json({ status: false, message: "Unknown server error" })
+    }
+})
+
+// Admin: delete an event
+router.delete('/deleteEvent/:id', requireAdmin, async (req, res) => {
+    try {
+        await db.events.deleteOne({ _id: new mongodb.ObjectId(req.params.id) })
+        res.json({ status: true, message: 'Event deleted' })
+    } catch(err) {
+        console.error(err)
+        res.json({ status: false, message: "Unknown server error" })
     }
 })
 
@@ -533,7 +577,7 @@ router.post('/getPerformance', requirePermission('read:db'), async (req, res) =>
             return res.json({ status: false, message: 'UserID is missing in request' })
         }
 
-        const events = require('../../events.json')
+        const events = await db.events.find({}).toArray()
         const eventNames = events.map(e => e.name)
 
         const pipeline = [

@@ -23,7 +23,7 @@ setUp()
 async function setUp() {
     try {
         const DBClient = await mongodb.MongoClient.connect(`mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@cluster0.ofpmb.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`, { useNewUrlParser: true })
-        question.setUp(DBClient)
+        await question.setUp(DBClient)
         auth.setUp(DBClient)
         app.listen(port, () => console.log(`The server is up! Listening at ${port}`))
 
