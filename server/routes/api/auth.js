@@ -30,8 +30,7 @@ const resetLimiter = rateLimit({
 let db = {}
 
 function setUp(DBclient) {
-    db.users = DBclient.db('users').collection('users')
-    db.users.createIndex({ email: 1 }, { unique: true }).catch(() => {})
+    db.users = DBclient.db('scioapp').collection('users')
 }
 
 // Gravatar URL from email (falls back to identicon for users without a Gravatar)

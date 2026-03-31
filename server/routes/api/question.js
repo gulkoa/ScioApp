@@ -12,13 +12,13 @@ let client = null
 let db = {}
 async function setUp(DBclient) {
     client = DBclient
-    db.questions = client.db('questions').collection('questions0')
-    db.submissions = client.db('submissions').collection('submissions0')
-    db.users = client.db('users').collection('users')
-    db.ranking = client.db('users').collection('ranking')
-    db.tests = client.db('tests').collection('tests')
-    db.testSubmissions = client.db('tests').collection('submissions')
-    db.events = client.db('users').collection('events')
+    const sdb = client.db('scioapp')
+    db.questions = sdb.collection('questions')
+    db.submissions = sdb.collection('submissions')
+    db.users = sdb.collection('users')
+    db.tests = sdb.collection('tests')
+    db.testSubmissions = sdb.collection('test_submissions')
+    db.events = sdb.collection('events')
 }
 
 const router = express.Router()
@@ -271,23 +271,12 @@ router.post('/submitSolution', requirePermission('read:db'), async (req, res) =>
 
         const checkReport = checkSolution(question, solution)
 
-        //save score
-        if (checkReport.correct) {
-            let oldSubmission = await db.submissions.findOne({questionID: questionID, userID})
-            if (!oldSubmission) {
-                const timeZScore = question.standardDeviation && question.standardDeviation !== 0 ? (solution.time - question.averageTime) / question.standardDeviation : -0.5
-                const score = timeZScore < 0 ? (-timeZScore/2 + 1) * 1000 : 1000
-                const date = new Date()
-                await db.ranking.updateOne({userID, event: question.event}, {$inc: {score: score}, $set: {lastUpdated: date}}, {upsert: true})
-            }
-        }
-    
-            const submission = {
-            timestamp: Date.now(),
+        const submission = {
+            timestamp: new Date(),
             questionID,
+            source: 'question',
             userID,
             userSolution: solution,
-            questionType: question.type,
             event: question.event,
             checkReport
         }
@@ -331,11 +320,11 @@ router.post('/mockSubmitSolution', async (req, res) => {
         // Save MADTON submissions so they count on the leaderboard
         if (!checkReport.continue && userID && question.event) {
             await db.submissions.insertOne({
-                timestamp: Date.now(),
-                questionID: 'madton',
+                timestamp: new Date(),
+                questionID: null,
+                source: 'madton',
                 userID,
                 userSolution: solution,
-                questionType: question.type,
                 event: question.event,
                 checkReport
             })
@@ -359,7 +348,7 @@ router.post('/addQuestion', requirePermission('add:db'), async (req, res) => {
     try {
         const question = req.body.question
         question.submittedBy = req.body.userID
-        question.submittedTimeStamp = Date.now()
+        question.createdAt = new Date()
         if (question.type === 'Cryptography' && !question.secret.plaintext) {
             res.json({
                 status: false,
@@ -385,7 +374,7 @@ router.post('/addTest', requirePermission('add:db'), async (req, res) => {
     try {
         const test = req.body.test
         test.submittedBy = req.body.userID
-        test.submittedTimeStamp = Date.now()
+        test.createdAt = new Date()
         await db.tests.insertOne(test)
         res.json({
             status: true,
@@ -421,6 +410,16 @@ router.post('/submitTest', requirePermission('read:db'), async (req, res) => {
             }
             reports.push(checkReport)
         }
+
+        // Save test submission
+        await db.testSubmissions.insertOne({
+            testID,
+            userID,
+            timestamp: new Date(),
+            score,
+            reports
+        })
+
         res.json({
             status: true,
             score,
@@ -511,7 +510,7 @@ router.post('/getRanking', requirePermission('read:db'), async (req, res) => {
         const submissions = await db.submissions.find({
             event: eventFilter,
             'checkReport.correct': true,
-            timestamp: { $gte: monday.getTime(), $lt: sunday.getTime() }
+            timestamp: { $gte: monday, $lt: sunday }
         }).toArray()
 
         // Build scores per user — each correct answer = 1000 pts + speed bonus
