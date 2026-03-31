@@ -174,7 +174,8 @@ export default {
             this.updateTopics()
         },
         async deleteQuestion(question, index) {
-            if (!confirm(`Delete "${question.prompt}"?`)) return
+            const input = prompt(`Type "delete permanently" to delete "${question.prompt}"`)
+            if (input !== 'delete permanently') return
             try {
                 const result = await ServerTalker.deleteQuestion(question._id)
                 if (result.status) {
