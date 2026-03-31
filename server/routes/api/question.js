@@ -18,7 +18,7 @@ async function setUp(DBclient) {
     db.ranking = client.db('users').collection('ranking')
     db.tests = client.db('tests').collection('tests')
     db.testSubmissions = client.db('tests').collection('submissions')
-    db.events = client.db('config').collection('events')
+    db.events = client.db('users').collection('events')
 }
 
 const router = express.Router()
