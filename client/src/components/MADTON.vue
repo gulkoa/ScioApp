@@ -1,5 +1,8 @@
 <template>
   <div>
+    <div v-if="serverDown" class="alert alert-danger text-center m-3 mb-0" role="alert">
+      Server is unreachable. Your answers may not be saved.
+    </div>
     <div class="m-3 hstack">
         <img src="../assets/magicIcon.svg" class="img-fluid mx-2" alt="MADTON">
         <span class="">
@@ -31,8 +34,10 @@
 
 import QuestionWrapper from './QuestionWrapper.vue'
 import ServerTalker from '../ServerTalker'
+import healthPing from '../healthPing'
 export default {
     name: 'MADTON',
+    mixins: [healthPing],
     props: {
         userID: String,
     },

@@ -1,5 +1,8 @@
 <template>
   <div>
+    <div v-if="serverDown" class="alert alert-danger text-center m-3 mb-0" role="alert">
+      Server is unreachable. Your answers may not be saved.
+    </div>
     <div class="card card-body p-4 m-3" v-if="displayQuestion">
         <QuestionWrapper :userID="userID" :question="question" :messages="messages" @loadNewQuestion="goToLibrary()"/>
     </div>
@@ -10,8 +13,10 @@
 
 import QuestionWrapper from './QuestionWrapper.vue'
 import ServerTalker from '../ServerTalker'
+import healthPing from '../healthPing'
 export default {
     name: 'Question',
+    mixins: [healthPing],
     props: {
         userID: String,
         prop: String, //question id

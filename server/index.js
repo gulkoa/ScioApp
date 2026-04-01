@@ -13,6 +13,9 @@ const port = process.env.PORT || 5000
 const question = require('./routes/api/question')
 const auth = require('./routes/api/auth')
 
+// Health check (public, no auth)
+app.get('/api/health', (req, res) => res.json({ ok: true }))
+
 // Auth routes (login/register) are public
 app.use('/api/auth/', auth.router)
 

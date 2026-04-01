@@ -1,5 +1,8 @@
 <template>
   <div>
+  <div v-if="serverDown" class="alert alert-danger text-center m-3 mb-0" role="alert">
+    Server is unreachable. Your answers may not be saved.
+  </div>
   <!-- selection bar -->
   <div class="card card-body p-4 m-3 hstack gap-3">
     <!-- event dropdown -->
@@ -67,8 +70,10 @@
 <script>
 import ServerTalker from '../ServerTalker'
 import QuestionWrapper from './QuestionWrapper.vue'
+import healthPing from '../healthPing'
 export default {
   name: 'Feed',
+  mixins: [healthPing],
   props: {
     userID: String,
   },
