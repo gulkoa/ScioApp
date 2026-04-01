@@ -379,10 +379,11 @@ router.post('/addQuestion', requirePermission('add:db'), async (req, res) => {
             })
             return
         }
-        await db.questions.insertOne(question)
+        const result = await db.questions.insertOne(question)
         res.json({
             status: true,
-            message: "Question successfully added to the database!"
+            message: "Question successfully added to the database!",
+            questionID: result.insertedId
         })
     } catch(err) {
         console.error(err)
