@@ -12,7 +12,8 @@
             </div>
             </div>
 
-            <p class="ms-auto fs-6 m-1">{{messages.loadQuestion}}</p>
+            <a v-if="permissions.add" href="/test/editor" class="btn btn-primary ms-auto">Create test</a>
+            <p class="fs-6 m-1">{{messages.loadQuestion}}</p>
         </div>
 
 
@@ -47,6 +48,7 @@ export default {
             },
             permissions: {
                 manage: false,
+                add: false,
             }
         }
     },
@@ -55,6 +57,7 @@ export default {
         try {
             this.events = await ServerTalker.getEvents()
             this.permissions.manage = ServerTalker.hasPermission('manage:db')
+            this.permissions.add = ServerTalker.hasPermission('add:db')
 
         } catch(err) {
         this.error = err.message
