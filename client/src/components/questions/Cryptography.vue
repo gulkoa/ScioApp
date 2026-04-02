@@ -7,8 +7,10 @@
 
     <button class="btn btn-primary m-2" @click="autoJumpToggle()" :disabled="disabled"> AutoJump: {{autoJumpText}} </button>
 
+    <button class="btn btn-primary m-2" @click="letterSyncToggle()" :disabled="disabled"> LetterSync: {{letterSyncText}} </button>
+
     <div class="popup m-2" @mouseenter="togglePopup(true)" @mouseleave="togglePopup(false)">
-      <span class="popuptext" :id="question._id + 'shortcutPopout'">Keyboard shortcuts:<br>Arrow Left/Right - skip between boxes <br>Backspace - remove and skip back <br>Delete - remove <br>Enter - submit  <br>Right control - toggle AutoJump</span>
+      <span class="popuptext" :id="question._id + 'shortcutPopout'">Keyboard shortcuts:<br>Arrow Left/Right - skip between boxes <br>Backspace - remove and skip back <br>Delete - remove <br>Enter - submit  <br>Right control - toggle AutoJump <br>Left control - toggle LetterSync</span>
 
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-keyboard" viewBox="0 0 16 16">
   <path d="M14 5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h12zM2 4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H2z"/>
@@ -54,6 +56,11 @@ export default {
 
       autoJump: true,
       autoJumpText: 'ON',
+
+      letterSync: false,
+      letterSyncText: 'OFF',
+
+      freqFields: {},
     }
   },
   async mounted() {
@@ -118,6 +125,8 @@ export default {
         if (this.question.solution && this.question.solution.text[thisIndex])
           letterField.value = this.question.solution.text[thisIndex]
 
+        letterField.dataset.symbol = symbol
+
         letterField.onfocus = () => {
           letterField.select()
         }
@@ -127,20 +136,10 @@ export default {
             if (letterField.value.length > 1)
                 letterField.value = letterField.value.substring(letterField.value.length - 1)
               letterField.value = letterField.value.toUpperCase()
-            
-            //              AUTOFILL
-            //alphabet[symbol] = letterField.value
-            // const allFieldsWithThisLetter = document.getElementsByClassName(`input-${symbol}`)
-            // for (let i = 0; i < allFieldsWithThisLetter.length; i++) {
-            //     allFieldsWithThisLetter[i].value = letterField.value
-            // }
-            // for (letter in alphabet) {
-            //     if(alphabet[letter] == symbol) {
-            //         const allFieldsWithSameEnteredLetter = document.getElementsByClassName(`input-${letter}`)
-            //         for (field in allFieldsWithSameEnteredLetter)
-            //             field.className += ' redField'
-            //     }
-            // }
+
+            if (this.letterSync) {
+              this.syncFields(symbol, letterField.value)
+            }
 
             if (this.autoJump)
               this.fields[(thisIndex+1)%this.fields.length].focus()
@@ -180,8 +179,10 @@ export default {
               this.updateSolutionText()
             }
             else if (e.code === 'ControlRight') {
-              //cancel solution
               this.autoJumpToggle()
+            }
+            else if (e.code === 'ControlLeft') {
+              this.letterSyncToggle()
             }
         }
 
@@ -199,6 +200,20 @@ export default {
     autoJumpToggle() {
       this.autoJump = !this.autoJump
       this.autoJumpText = this.autoJump ? 'ON' : 'OFF'
+    },
+    letterSyncToggle() {
+      this.letterSync = !this.letterSync
+      this.letterSyncText = this.letterSync ? 'ON' : 'OFF'
+    },
+    syncFields(symbol, value) {
+      for (let field of this.fields) {
+        if (field.dataset.symbol === symbol) {
+          field.value = value
+        }
+      }
+      if (this.freqFields[symbol]) {
+        this.freqFields[symbol].value = value
+      }
     },
     loadLetterCount() {
       const table = document.createElement('table')
@@ -241,10 +256,17 @@ export default {
         substituteCell.appendChild(inputCell)
         substituteRow.appendChild(substituteCell)
 
+        this.freqFields[letter] = inputCell
+
         inputCell.oninput = () => {
             if (inputCell.value.length > 1)
                 inputCell.value = inputCell.value.substring(inputCell.value.length - 1)
               inputCell.value = inputCell.value.toUpperCase()
+
+            if (this.letterSync) {
+              this.syncFields(letter, inputCell.value)
+              this.updateSolutionText()
+            }
         }
 
         inputCell.onfocus = () => {
@@ -255,6 +277,7 @@ export default {
 
     reset() {
       this.fields.forEach(f => f.value = '')
+      Object.values(this.freqFields).forEach(f => f.value = '')
       this.question.solution.text = ''
     },
     async submit() {
