@@ -57,7 +57,7 @@
           <img v-if="users[1].picture" :src="users[1].picture" class="podium-avatar" alt="">
           <div class="podium-rank silver">2</div>
           <div class="podium-bar silver-bg" style="height:100px"></div>
-          <p class="fw-bold mb-0 mt-2">{{ users[1].name }}</p>
+          <p class="fw-bold mb-0 mt-2"><a :href="'/profile/' + users[1].userID" class="text-decoration-none text-reset">{{ users[1].name }}</a></p>
           <p class="text-muted small mb-0">{{ users[1].solved }} solved</p>
           <p class="h5 mb-0">{{ users[1].score.toLocaleString() }}</p>
         </div>
@@ -67,7 +67,7 @@
           <img v-if="users[0].picture" :src="users[0].picture" class="podium-avatar podium-avatar-lg" alt="">
           <div class="podium-rank gold">1</div>
           <div class="podium-bar gold-bg" style="height:140px"></div>
-          <p class="fw-bold mb-0 mt-2">{{ users[0].name }}</p>
+          <p class="fw-bold mb-0 mt-2"><a :href="'/profile/' + users[0].userID" class="text-decoration-none text-reset">{{ users[0].name }}</a></p>
           <p class="text-muted small mb-0">{{ users[0].solved }} solved</p>
           <p class="h4 mb-0">{{ users[0].score.toLocaleString() }}</p>
         </div>
@@ -77,7 +77,7 @@
           <img v-if="users[2].picture" :src="users[2].picture" class="podium-avatar" alt="">
           <div class="podium-rank bronze">3</div>
           <div class="podium-bar bronze-bg" style="height:70px"></div>
-          <p class="fw-bold mb-0 mt-2">{{ users[2].name }}</p>
+          <p class="fw-bold mb-0 mt-2"><a :href="'/profile/' + users[2].userID" class="text-decoration-none text-reset">{{ users[2].name }}</a></p>
           <p class="text-muted small mb-0">{{ users[2].solved }} solved</p>
           <p class="h5 mb-0">{{ users[2].score.toLocaleString() }}</p>
         </div>
@@ -101,7 +101,7 @@
               <td class="text-center text-muted">{{ index + 4 }}</td>
               <td class="fw-bold">
                 <img v-if="user.picture" :src="user.picture" class="table-avatar me-2" alt="">
-                {{ user.name }}
+                <a :href="'/profile/' + user.userID" class="text-decoration-none text-reset">{{ user.name }}</a>
               </td>
               <td class="text-center">{{ user.solved }}</td>
               <td class="text-center text-muted">{{ formatAvgTime(user) }}</td>

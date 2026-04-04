@@ -114,6 +114,10 @@ class ServerTalker {
         return this.post('question/getPerformance')
     }
 
+    static async getPublicProfile(userID) {
+        return this.get('question/publicProfile/' + userID)
+    }
+
     // --- Tests ---
 
     static async loadTest(testID) {

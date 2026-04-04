@@ -53,6 +53,7 @@ import Verify from './components/Verify.vue'
 import Admin from './components/Admin.vue'
 import ForgotPassword from './components/ForgotPassword.vue'
 import ResetPassword from './components/ResetPassword.vue'
+import PublicProfile from './components/PublicProfile.vue'
 
 export default {
   name: 'App',
@@ -66,7 +67,7 @@ export default {
   components: {
     Question, Feed, Header, QuestionEditor, Library, Profile, Ranking,
     Test, TestEditor, TestLibrary, MADTON, Login, Register, Verify, Admin,
-    ForgotPassword, ResetPassword,
+    ForgotPassword, ResetPassword, PublicProfile,
   },
   async mounted() {
     // Initialize auth (restore session from localStorage)
@@ -103,7 +104,8 @@ export default {
         this.innerComponent = 'Ranking'
         break
       case 'profile':
-        this.innerComponent = 'Profile'
+        if (path[1]) { this.innerComponent = 'PublicProfile'; this.prop = path[1] }
+        else this.innerComponent = 'Profile'
         break
       case 'test':
         if (path[1] === 'editor') this.innerComponent = 'TestEditor'
