@@ -672,6 +672,67 @@ router.post('/getPerformance', requirePermission('read:db'), async (req, res) =>
     }
 })
 
+// Public profile — returns name, avatar, join date and performance stats for any user
+router.get('/publicProfile/:userID', requirePermission('read:db'), async (req, res) => {
+    try {
+        const { userID } = req.params
+
+        let targetUser
+        try {
+            targetUser = await db.users.findOne(
+                { _id: new mongodb.ObjectId(userID) },
+                { projection: { name: 1, email: 1, createdAt: 1 } }
+            )
+        } catch (e) {
+            return res.json({ status: false, message: 'User not found' })
+        }
+
+        if (!targetUser) {
+            return res.json({ status: false, message: 'User not found' })
+        }
+
+        const events = await db.events.find({}).toArray()
+        const eventNames = events.map(e => e.name)
+
+        const pipeline = [
+            { $match: { userID, event: { $in: eventNames } } },
+            {
+                $group: {
+                    _id: '$event',
+                    totalAttempts: { $sum: 1 },
+                    correctCount: { $sum: { $cond: ['$checkReport.correct', 1, 0] } },
+                    avgTime: {
+                        $avg: { $cond: ['$checkReport.correct', '$userSolution.time', null] }
+                    }
+                }
+            },
+            { $sort: { correctCount: -1 } }
+        ]
+
+        const results = await db.submissions.aggregate(pipeline).toArray()
+        const performance = results.map(r => ({
+            event: r._id,
+            totalAttempts: r.totalAttempts,
+            correct: r.correctCount,
+            accuracy: r.totalAttempts > 0 ? Math.round((r.correctCount / r.totalAttempts) * 100) : 0,
+            avgTime: r.avgTime ? Math.round(r.avgTime) : null
+        }))
+
+        res.json({
+            status: true,
+            user: {
+                name: targetUser.name,
+                picture: gravatarUrl(targetUser.email, 128),
+                createdAt: targetUser.createdAt || null
+            },
+            performance
+        })
+    } catch (err) {
+        console.error(err)
+        res.json({ status: false, message: 'Unknown server error' })
+    }
+})
+
 router.post('/MADTON', requirePermission('read:db'), async (req, res) => {
     try {
         const { userID, topic } = req.body
