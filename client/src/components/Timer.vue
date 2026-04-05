@@ -39,6 +39,9 @@ export default {
         this.question.paused = false
         this.startTimer()
     },
+    beforeDestroy() {
+        clearInterval(this.question.timer)
+    },
     methods: {
         startTimer() {
             // console.log(this.question.solution.time)

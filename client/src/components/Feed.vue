@@ -58,11 +58,12 @@
 
 
   </div>
+  <!-- error state -->
+  <div v-if="error" class="alert alert-danger text-center m-3 mb-0" role="alert">
+    Failed to load events. Please try refreshing the page.
+  </div>
   <!-- loading animation -->
-  <div v-if="loading" class="lds-ripple"><div></div><div></div></div>
-  <!-- <div v-else>
-    <p class="text-center fs-3 m-3"></p>
-  </div> -->
+  <div v-else-if="loading" class="lds-ripple"><div></div><div></div></div>
   
   </div>
 </template>
@@ -112,8 +113,6 @@ export default {
     } catch(err) {
       this.error = err.message
     }
-  },
-  mounted() {
     this.loading = false
   },
   methods: {
