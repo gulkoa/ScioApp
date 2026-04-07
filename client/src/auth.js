@@ -165,13 +165,27 @@ export const useAuth = () => {
         window.location.href = '/'
       },
 
-      // Silently refresh token every hour
+      // Refresh token only when it's close to expiring (< 24h remaining).
+      // Checks every 6 hours instead of refreshing unconditionally every hour.
       _startRefresh() {
         if (this._refreshTimer) clearInterval(this._refreshTimer)
-        this._refreshTimer = setInterval(() => this._refresh(), 60 * 60 * 1000)
+        this._refreshTimer = setInterval(() => this._refreshIfNeeded(), 6 * 60 * 60 * 1000)
       },
 
-      async _refresh() {
+      _tokenExpiresIn() {
+        if (!this.token) return 0
+        try {
+          const payload = JSON.parse(atob(this.token.split('.')[1]))
+          return (payload.exp * 1000) - Date.now()
+        } catch {
+          return 0
+        }
+      },
+
+      async _refreshIfNeeded() {
+        const remaining = this._tokenExpiresIn()
+        // Only refresh if less than 24 hours remain
+        if (remaining > 24 * 60 * 60 * 1000) return
         if (!this.token) return
         try {
           const res = await axios.get(url + 'me', {

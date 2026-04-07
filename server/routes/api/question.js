@@ -45,14 +45,8 @@ const router = express.Router()
 //jwtAuthz(['read:db'])
 router.post('/loadFeed', requirePermission('read:db'), async (req, res) => {
     try {
-        const {event, topicsNames, userID} = req.body
-        if (!userID) {
-            res.send({
-                status: false,
-                message: "UserID is missing in request"
-            })
-            return
-        }
+        const {event, topicsNames} = req.body
+        const userID = req.user.id
         const questions = await db.questions.find({event, topic: {$in: topicsNames}, showInFeed: true}).toArray()
         if (questions.length === 0) {
             res.json({status: false, message: "No questions found"})
@@ -93,14 +87,8 @@ router.post('/loadFeed', requirePermission('read:db'), async (req, res) => {
 //jwtAuthz(['read:db'])
 router.post('/loadLibrary', requirePermission('read:db'), async (req, res) => {
     try {
-        const {event, topicsNames, userID, showHidden} = req.body
-        if (!userID) {
-            res.send({
-                status: false,
-                message: "UserID is missing in request"
-            })
-            return
-        }
+        const {event, topicsNames, showHidden} = req.body
+        const userID = req.user.id
         const filter = {event, topic: {$in: topicsNames}}
         // Only users with manage:db can see hidden questions
         const userPerms = req.user?.permissions || []
@@ -154,7 +142,8 @@ router.post('/loadLibrary', requirePermission('read:db'), async (req, res) => {
 //jwtAuthz(['read:db'])
 router.post('/loadQuestion', requirePermission('read:db'), async (req, res) => {
     try {
-        const {questionID, userID} = req.body
+        const {questionID} = req.body
+        const userID = req.user.id
 
 
         if (questionID === 'aurora1445') {
@@ -171,13 +160,6 @@ router.post('/loadQuestion', requirePermission('read:db'), async (req, res) => {
             return
         }
 
-        if (!userID) {
-            res.send({
-                status: false,
-                message: "UserID is missing in request"
-            })
-            return
-        }
         const question = await db.questions.findOne({_id: mongodb.ObjectId(questionID)})
         if (!question) {
             res.json({status: false, message: "Question not found"})
@@ -204,14 +186,8 @@ router.post('/loadQuestion', requirePermission('read:db'), async (req, res) => {
 
 router.post('/loadTest', requirePermission('read:db'), async (req, res) => {
     try {
-        const {testID, userID} = req.body
-        if (!userID) {
-            res.send({
-                status: false,
-                message: "UserID is missing in request"
-            })
-            return
-        }
+        const {testID} = req.body
+        const userID = req.user.id
         const test = await db.tests.findOne({_id: mongodb.ObjectId(testID)})
         if (!test) {
             res.json({status: false, message: "Test not found"})
@@ -237,14 +213,8 @@ router.post('/loadTest', requirePermission('read:db'), async (req, res) => {
 
 router.post('/loadTests', requirePermission('read:db'), async (req, res) => {
     try {
-        const {event, userID} = req.body
-        if (!userID) {
-            res.send({
-                status: false,
-                message: "UserID is missing in request"
-            })
-            return
-        }
+        const {event} = req.body
+        const userID = req.user.id
         let tests = await db.tests.find({event}).toArray()
         if (tests.length === 0) {
             res.json({status: false, message: "No tests found"})
@@ -289,14 +259,8 @@ router.post('/loadTests', requirePermission('read:db'), async (req, res) => {
 //jwtAuthz(['read:db'])
 router.post('/submitSolution', submitLimiter, requirePermission('read:db'), async (req, res) => {
     try {
-        const {questionID, userID, solution} = req.body
-        if (!userID) {
-            res.send({
-                status: false,
-                message: "UserID is missing in request"
-            })
-            return
-        }
+        const {questionID, solution} = req.body
+        const userID = req.user.id
         // Check in-memory MADTON store first, then DB
         const isMadton = madtonQuestions.has(questionID)
         let question
@@ -370,7 +334,7 @@ router.post('/mockSubmitSolution', async (req, res) => {
 router.post('/addQuestion', requirePermission('add:db'), async (req, res) => {
     try {
         const question = req.body.question
-        question.submittedBy = req.body.userID
+        question.submittedBy = req.user.id
         question.createdAt = new Date()
         if (question.type === 'Cryptography' && !question.secret.plaintext) {
             res.json({
@@ -431,7 +395,7 @@ router.delete('/deleteQuestion/:id', requirePermission('manage:db'), async (req,
 router.post('/addTest', requirePermission('add:db'), async (req, res) => {
     try {
         const test = req.body.test
-        test.submittedBy = req.body.userID
+        test.submittedBy = req.user.id
         test.createdAt = new Date()
         await db.tests.insertOne(test)
         res.json({
@@ -449,14 +413,8 @@ router.post('/addTest', requirePermission('add:db'), async (req, res) => {
 
 router.post('/submitTest', requirePermission('read:db'), async (req, res) => {
     try {
-        const {testID, userID, testSolutions} = req.body
-        if (!userID) {
-            res.send({
-                status: false,
-                message: "UserID is missing in request"
-                })
-                return
-        }
+        const {testID, testSolutions} = req.body
+        const userID = req.user.id
         let test = await db.tests.findOne({_id: new mongodb.ObjectId(testID)})
         let score = 0
         let reports = []
@@ -622,10 +580,7 @@ router.post('/getRanking', requirePermission('read:db'), async (req, res) => {
 
 router.post('/getPerformance', requirePermission('read:db'), async (req, res) => {
     try {
-        const { userID } = req.body
-        if (!userID) {
-            return res.json({ status: false, message: 'UserID is missing in request' })
-        }
+        const userID = req.user.id
 
         const events = await db.events.find({}).toArray()
         const eventNames = events.map(e => e.name)
@@ -735,7 +690,7 @@ router.get('/publicProfile/:userID', requirePermission('read:db'), async (req, r
 
 router.post('/MADTON', requirePermission('read:db'), async (req, res) => {
     try {
-        const { userID, topic } = req.body
+        const { topic } = req.body
         const quotes = await axios.get("https://type.fit/api/quotes")
         let quote = quotes.data[Math.floor(Math.random() * quotes.data.length)]
         let ciphertext = ''
@@ -797,7 +752,7 @@ router.post('/MADTON', requirePermission('read:db'), async (req, res) => {
 
 router.post('/encrypt', requirePermission('read:db'), async (req, res) => {
     try {
-        let { userID, topic, plaintext } = req.body
+        let { topic, plaintext } = req.body
         let ciphertext = ''
         switch(topic) {
             case 'aristocrats':
