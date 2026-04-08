@@ -90,7 +90,7 @@ class ServerTalker {
 
     static async getEvents() {
         const data = await this.get('question/getEvents')
-        return data.events
+        return (data.events || []).sort((a, b) => a.name.localeCompare(b.name))
     }
 
     // --- Rankings ---
