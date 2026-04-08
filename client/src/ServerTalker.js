@@ -17,18 +17,9 @@ class ServerTalker {
             : {}
     }
 
-    // Get current user ID
-    static _userID() {
-        const auth = getInstance()
-        return auth && auth.user ? auth.user.id : null
-    }
-
     // Generic POST helper
     static async post(endpoint, args = {}) {
-        const res = await axios.post(url + endpoint, {
-            ...args,
-            userID: this._userID()
-        }, {
+        const res = await axios.post(url + endpoint, args, {
             headers: this._headers()
         })
         if (res.data.status) return res.data
@@ -99,7 +90,7 @@ class ServerTalker {
 
     static async getEvents() {
         const data = await this.get('question/getEvents')
-        return data.events
+        return (data.events || []).sort((a, b) => a.name.localeCompare(b.name))
     }
 
     // --- Rankings ---

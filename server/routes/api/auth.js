@@ -46,8 +46,7 @@ function signToken(user) {
             email: user.email,
             name: user.name,
             role: user.role,
-            permissions: user.permissions,
-            picture: gravatarUrl(user.email)
+            permissions: user.permissions
         },
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
