@@ -25,14 +25,14 @@
       </button>
 
       <p class="text-center mt-3 mb-0">
-        Already have an account? <a href="/login">Log in</a>
+        Already have an account? <router-link to="/login">Log in</router-link>
       </p>
     </template>
 
     <div v-else class="text-center">
       <div class="alert alert-success">{{ success }}</div>
       <p class="text-muted">Check your inbox and click the verification link to activate your account.</p>
-      <a href="/login" class="btn btn-primary mt-2">Go to login</a>
+      <router-link to="/login" class="btn btn-primary mt-2">Go to login</router-link>
     </div>
   </div>
 </template>

@@ -540,18 +540,20 @@ function aggregateScores(submissions) {
 // of past period winners (for the tiny calendar avatars view).
 router.post('/getRanking', requirePermission('read:db'), async (req, res) => {
     try {
-        let { event, period } = req.body
+        let { event, period, at } = req.body
         period = period === 'month' || period === 'all' ? period : 'week'
 
-        const now = new Date()
+        // `at` lets the caller request the leaderboard for the period containing
+        // a specific point in time (used by the past-period calendar tiles).
+        const anchor = at ? new Date(at) : new Date()
         let periodStart = null
         let periodEnd = null
         if (period === 'week') {
-            periodStart = startOfWeekUTC(now)
+            periodStart = startOfWeekUTC(anchor)
             periodEnd = new Date(periodStart)
             periodEnd.setUTCDate(periodStart.getUTCDate() + 7)
         } else if (period === 'month') {
-            periodStart = startOfMonthUTC(now)
+            periodStart = startOfMonthUTC(anchor)
             periodEnd = new Date(Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth() + 1, 1))
         }
 
@@ -568,19 +570,22 @@ router.post('/getRanking', requirePermission('read:db'), async (req, res) => {
         let scores = aggregateScores(submissions)
 
         // Build a per-period history of winners (for the calendar view).
-        // For week: last 12 weeks. For month: last 12 months. For all-time: skip.
+        // Always anchored to "now" so users can navigate to past periods.
+        const now = new Date()
         const historyBuckets = []
         if (period === 'week') {
+            const thisWeekStart = startOfWeekUTC(now)
             for (let i = 0; i < 12; i++) {
-                const start = new Date(periodStart)
-                start.setUTCDate(periodStart.getUTCDate() - 7 * i)
+                const start = new Date(thisWeekStart)
+                start.setUTCDate(thisWeekStart.getUTCDate() - 7 * i)
                 const end = new Date(start)
                 end.setUTCDate(start.getUTCDate() + 7)
                 historyBuckets.push({ start, end })
             }
         } else if (period === 'month') {
+            const thisMonthStart = startOfMonthUTC(now)
             for (let i = 0; i < 12; i++) {
-                const start = new Date(Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth() - i, 1))
+                const start = new Date(Date.UTC(thisMonthStart.getUTCFullYear(), thisMonthStart.getUTCMonth() - i, 1))
                 const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1))
                 historyBuckets.push({ start, end })
             }

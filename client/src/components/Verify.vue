@@ -3,8 +3,8 @@
     <div v-if="loading" class="lds-ripple"><div></div><div></div></div>
     <div v-else>
       <h3 :class="success ? 'text-success' : 'text-danger'">{{ message }}</h3>
-      <a v-if="success" href="/login" class="btn btn-primary mt-3">Log in</a>
-      <a v-else href="/" class="btn btn-secondary mt-3">Go home</a>
+      <router-link v-if="success" to="/login" class="btn btn-primary mt-3">Log in</router-link>
+      <router-link v-else to="/" class="btn btn-secondary mt-3">Go home</router-link>
     </div>
   </div>
 </template>

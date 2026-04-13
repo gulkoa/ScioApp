@@ -4,22 +4,17 @@
     <Header/>
     <div v-if="!$auth.loading">
 
-      <!-- Authenticated: show the routed component -->
-      <div v-if="$auth.isAuthenticated && innerComponent">
-        <component :is="innerComponent" :userID="userID" v-bind:prop="prop"></component>
-      </div>
-
-      <!-- Public pages (login, register, verify) -->
-      <div v-else-if="isPublicPage">
-        <component :is="innerComponent"></component>
+      <!-- Authenticated, or public page: render the routed component -->
+      <div v-if="$auth.isAuthenticated || isPublicPage" :key="$route.fullPath" class="route-fade">
+        <router-view :userID="userID"/>
       </div>
 
       <!-- Not logged in, not on a public page -->
       <div v-else class="text-center my-5">
         <h2 class="mb-3">Welcome to ScioApp</h2>
         <p class="text-muted mb-4">Practice for Science Olympiad with questions, timed tests, and rankings.</p>
-        <a href="/login" class="btn btn-primary btn-lg me-2">Log in</a>
-        <a href="/register" class="btn btn-outline-primary btn-lg">Sign up</a>
+        <router-link to="/login" class="btn btn-primary btn-lg me-2">Log in</router-link>
+        <router-link to="/register" class="btn btn-outline-primary btn-lg">Sign up</router-link>
       </div>
 
     </div>
@@ -37,96 +32,27 @@
 
 <script>
 import Header from './components/Header.vue'
-import Feed from './components/Feed.vue'
-import Question from './components/Question.vue'
-import QuestionEditor from './components/QuestionEditor.vue'
-import Library from './components/Library.vue'
-import Profile from './components/Profile.vue'
-import Ranking from './components/Ranking.vue'
-import Test from './components/Test.vue'
-import TestEditor from './components/TestEditor.vue'
-import TestLibrary from './components/TestLibrary.vue'
-import MADTON from './components/MADTON.vue'
-import Login from './components/Login.vue'
-import Register from './components/Register.vue'
-import Verify from './components/Verify.vue'
-import Admin from './components/Admin.vue'
-import ForgotPassword from './components/ForgotPassword.vue'
-import ResetPassword from './components/ResetPassword.vue'
-import PublicProfile from './components/PublicProfile.vue'
 
 export default {
   name: 'App',
-  data() {
-    return {
-      innerComponent: undefined,
-      prop: undefined,
-      isPublicPage: false,
-    }
-  },
-  components: {
-    Question, Feed, Header, QuestionEditor, Library, Profile, Ranking,
-    Test, TestEditor, TestLibrary, MADTON, Login, Register, Verify, Admin,
-    ForgotPassword, ResetPassword, PublicProfile,
-  },
-  async mounted() {
+  components: { Header },
+  async created() {
     // Initialize auth (restore session from localStorage)
     await this.$auth.init()
 
-    const path = window.location.pathname.split('/')
-    path.splice(0, 1)
-
-    // Public pages — accessible without login
-    const publicPages = { 'login': 'Login', 'register': 'Register', 'verify': 'Verify', 'forgot-password': 'ForgotPassword', 'reset-password': 'ResetPassword' }
-    if (publicPages[path[0]]) {
-      this.innerComponent = publicPages[path[0]]
-      this.isPublicPage = true
-      return
-    }
-
     // Save intended destination so Login can redirect back after auth
-    if (!this.$auth.isAuthenticated) {
-      const intendedPath = window.location.pathname + window.location.search
+    if (!this.$auth.isAuthenticated && !this.isPublicPage) {
+      const intendedPath = this.$route.fullPath
       if (intendedPath !== '/') sessionStorage.setItem('loginRedirect', intendedPath)
-    }
-
-    // Everything else requires auth
-    switch (path[0]) {
-      case '':
-        this.innerComponent = 'Feed'
-        break
-      case 'question':
-        if (path[1] === 'editor') this.innerComponent = 'QuestionEditor'
-        else if (path[1] === 'library') this.innerComponent = 'Library'
-        else { this.innerComponent = 'Question'; this.prop = path[1] }
-        break
-      case 'ranking':
-        this.innerComponent = 'Ranking'
-        break
-      case 'profile':
-        if (path[1]) { this.innerComponent = 'PublicProfile'; this.prop = path[1] }
-        else this.innerComponent = 'Profile'
-        break
-      case 'test':
-        if (path[1] === 'editor') this.innerComponent = 'TestEditor'
-        else if (path[1] === 'library') this.innerComponent = 'TestLibrary'
-        else { this.innerComponent = 'Test'; this.prop = path[1] }
-        break
-      case 'MADTON':
-        this.innerComponent = 'MADTON'
-        break
-      case 'admin':
-        this.innerComponent = 'Admin'
-        break
-      default:
-        this.innerComponent = 'Feed'
-        break
     }
   },
   computed: {
     userID() {
       return this.$auth.isAuthenticated ? this.$auth.user.id : null
     },
+    isPublicPage() {
+      return !!(this.$route.meta && this.$route.meta.public)
+    }
   }
 }
 </script>
@@ -139,6 +65,14 @@ export default {
   }
   #pageContent {
     min-height: 90vh;
+  }
+  /* Subtle fade on route change so SPA navigation feels smooth */
+  .route-fade {
+    animation: routeFadeIn 180ms ease-out;
+  }
+  @keyframes routeFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
   footer {
     bottom: 0;

@@ -47,7 +47,7 @@ export default {
     },
     methods: {
         goToLibrary() {
-            window.location.href = '/question/library'
+            this.$router.push('/question/library')
         },
     },
     

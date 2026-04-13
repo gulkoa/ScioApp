@@ -2,7 +2,7 @@
   <div class="profile-wrap mx-auto my-3">
     <!-- Back button -->
     <div class="mb-3">
-      <a href="/ranking" class="btn btn-outline-secondary btn-sm">&larr; Back to Leaderboard</a>
+      <router-link to="/ranking" class="btn btn-outline-secondary btn-sm">&larr; Back to Leaderboard</router-link>
     </div>
 
     <!-- Loading -->

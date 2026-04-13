@@ -23,10 +23,10 @@
     </button>
 
     <p class="text-center mt-3 mb-0">
-      <a href="/forgot-password">Forgot password?</a>
+      <router-link to="/forgot-password">Forgot password?</router-link>
     </p>
     <p class="text-center mt-2 mb-0">
-      Don't have an account? <a href="/register">Sign up</a>
+      Don't have an account? <router-link to="/register">Sign up</router-link>
     </p>
   </div>
 </template>

@@ -103,6 +103,7 @@
 
 <script>
 import ServerTalker from '../ServerTalker'
+import { saveEventName, findSavedEvent } from '../eventStore'
 
 import MultipleChoiceConstructor from './questionConstructors/MultipleChoiceConstructor.vue'
 import CryptographyConstructor from './questionConstructors/CryptographyConstructor.vue'
@@ -153,6 +154,10 @@ export default {
           if (event) this.topics = event.topics
           this.showPreview = true
         }
+      } else {
+        // New question: prefill with the user's last-used event
+        const saved = findSavedEvent(this.events)
+        if (saved) this.changeEvent(saved)
       }
     } catch(err) {
       this.error = err.message
@@ -214,6 +219,7 @@ export default {
       this.question.event = event.name
       this.topics = event.topics
       this.question.checklist.event = true
+      saveEventName(event.name)
     },
     changeTopic(topic) {
       this.question.topic = topic.name
