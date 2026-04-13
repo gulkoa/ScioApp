@@ -19,7 +19,7 @@ export const useAuth = () => {
       return {
         loading: true,
         isAuthenticated: false,
-        user: null,   // { id, email, name, role, permissions }
+        user: null,   // { id, email (primary), emails: [{address, verified, primary, ...}], name, role, permissions, picture }
         token: null,
         error: null
       }
@@ -134,6 +134,75 @@ export const useAuth = () => {
           const res = await axios.patch(url + 'me/password', { currentPassword, newPassword }, {
             headers: { Authorization: 'Bearer ' + this.token }
           })
+          return res.data
+        } catch {
+          return { status: false, message: 'Network error' }
+        }
+      },
+
+      // Add an additional email to the account (sends verification email)
+      async addEmail(address) {
+        try {
+          const res = await axios.post(url + 'me/emails', { address }, {
+            headers: { Authorization: 'Bearer ' + this.token }
+          })
+          if (res.data.status && res.data.user) {
+            this.user = res.data.user
+            if (res.data.token) {
+              this.token = res.data.token
+              localStorage.setItem('token', res.data.token)
+            }
+          }
+          return res.data
+        } catch {
+          return { status: false, message: 'Network error' }
+        }
+      },
+
+      // Resend the verification email for one of the user's unverified addresses
+      async resendEmailVerification(address) {
+        try {
+          const res = await axios.post(url + 'me/emails/resend', { address }, {
+            headers: { Authorization: 'Bearer ' + this.token }
+          })
+          return res.data
+        } catch {
+          return { status: false, message: 'Network error' }
+        }
+      },
+
+      // Remove a non-primary email from the account
+      async removeEmail(address) {
+        try {
+          const res = await axios.delete(url + 'me/emails/' + encodeURIComponent(address), {
+            headers: { Authorization: 'Bearer ' + this.token }
+          })
+          if (res.data.status && res.data.user) {
+            this.user = res.data.user
+            if (res.data.token) {
+              this.token = res.data.token
+              localStorage.setItem('token', res.data.token)
+            }
+          }
+          return res.data
+        } catch {
+          return { status: false, message: 'Network error' }
+        }
+      },
+
+      // Promote a verified email to primary
+      async setPrimaryEmail(address) {
+        try {
+          const res = await axios.patch(url + 'me/emails/primary', { address }, {
+            headers: { Authorization: 'Bearer ' + this.token }
+          })
+          if (res.data.status && res.data.user) {
+            this.user = res.data.user
+            if (res.data.token) {
+              this.token = res.data.token
+              localStorage.setItem('token', res.data.token)
+            }
+          }
           return res.data
         } catch {
           return { status: false, message: 'Network error' }

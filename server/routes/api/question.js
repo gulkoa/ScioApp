@@ -4,6 +4,7 @@ const crypto = require('crypto')
 const axios = require('axios')
 const rateLimit = require('express-rate-limit')
 const { requirePermission, requireAdmin } = require('../../middleware/auth')
+const { primaryEmailOf } = require('./auth')
 
 const submitLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -623,13 +624,14 @@ router.post('/getRanking', requirePermission('read:db'), async (req, res) => {
 
         const users = await db.users.find(
             { _id: { $in: userIds.map(id => { try { return new mongodb.ObjectId(id) } catch(e) { return id } }) } },
-            { projection: { name: 1, email: 1 } }
+            { projection: { name: 1, emails: 1, email: 1 } }
         ).toArray()
         const nameMap = {}
         const pictureMap = {}
         users.forEach(u => {
-            nameMap[u._id.toString()] = u.name || u.email
-            pictureMap[u._id.toString()] = gravatarUrl(u.email, 64)
+            const primary = primaryEmailOf(u)
+            nameMap[u._id.toString()] = u.name || primary
+            pictureMap[u._id.toString()] = gravatarUrl(primary, 64)
         })
         const decorate = s => {
             s.name = nameMap[s.userID] || s.userID
@@ -714,7 +716,7 @@ router.get('/publicProfile/:userID', requirePermission('read:db'), async (req, r
         try {
             targetUser = await db.users.findOne(
                 { _id: new mongodb.ObjectId(userID) },
-                { projection: { name: 1, email: 1, createdAt: 1 } }
+                { projection: { name: 1, emails: 1, email: 1, createdAt: 1 } }
             )
         } catch (e) {
             return res.json({ status: false, message: 'User not found' })
@@ -755,7 +757,7 @@ router.get('/publicProfile/:userID', requirePermission('read:db'), async (req, r
             status: true,
             user: {
                 name: targetUser.name,
-                picture: gravatarUrl(targetUser.email, 128),
+                picture: gravatarUrl(primaryEmailOf(targetUser), 128),
                 createdAt: targetUser.createdAt || null
             },
             performance

@@ -14,7 +14,9 @@
     <!-- Event Performance -->
     <div class="card p-4 mb-3">
       <h5 class="mb-3">Event Performance</h5>
-      <div v-if="perfLoading" class="text-muted">Loading performance data...</div>
+      <div v-if="perfLoading" class="text-center my-3">
+        <div class="spinner-border text-primary"></div>
+      </div>
       <div v-else-if="perfError" class="alert alert-danger py-2">{{ perfError }}</div>
       <div v-else-if="performance.length === 0" class="text-muted">No submissions yet. Start solving questions to see your stats!</div>
       <div v-else>
@@ -61,6 +63,70 @@
       <button class="btn btn-primary" :disabled="nameLoading" @click="submitName">
         {{ nameLoading ? 'Saving...' : 'Save Name' }}
       </button>
+    </div>
+
+    <!-- Email Addresses -->
+    <div class="card p-4 mb-3">
+      <h5 class="mb-3">Email Addresses</h5>
+      <p class="text-muted small mb-3">
+        Add more emails to keep access if you lose one. Any verified email can log in or reset your password.
+      </p>
+      <div v-if="emailError" class="alert alert-danger py-2">{{ emailError }}</div>
+      <div v-if="emailSuccess" class="alert alert-success py-2">{{ emailSuccess }}</div>
+
+      <ul class="list-group mb-3">
+        <li
+          v-for="e in sortedEmails"
+          :key="e.address"
+          class="list-group-item d-flex flex-wrap align-items-center gap-2"
+        >
+          <span class="text-break">{{ e.address }}</span>
+          <span v-if="e.primary" class="badge bg-primary">Primary</span>
+          <span v-else-if="e.verified" class="badge bg-success">Verified</span>
+          <span v-else class="badge bg-warning text-dark">Unverified</span>
+
+          <div class="ms-auto d-flex flex-wrap gap-2">
+            <button
+              v-if="!e.verified"
+              class="btn btn-sm btn-outline-secondary"
+              :disabled="emailBusy === e.address"
+              @click="resendVerification(e.address)"
+            >
+              Resend verification
+            </button>
+            <button
+              v-if="e.verified && !e.primary"
+              class="btn btn-sm btn-outline-primary"
+              :disabled="emailBusy === e.address"
+              @click="makePrimary(e.address)"
+            >
+              Set as primary
+            </button>
+            <button
+              v-if="!e.primary"
+              class="btn btn-sm btn-outline-danger"
+              :disabled="emailBusy === e.address"
+              @click="removeEmailAddr(e.address)"
+            >
+              Remove
+            </button>
+          </div>
+        </li>
+      </ul>
+
+      <label class="form-label">Add another email</label>
+      <div class="input-group">
+        <input
+          v-model="newEmail"
+          type="email"
+          class="form-control"
+          placeholder="you@example.com"
+          @keyup.enter="addEmail"
+        >
+        <button class="btn btn-primary" :disabled="addingEmail" @click="addEmail">
+          {{ addingEmail ? 'Sending...' : 'Add email' }}
+        </button>
+      </div>
     </div>
 
     <!-- Change password -->
@@ -132,10 +198,25 @@ export default {
 
       confirmDelete: false,
       deleteError: null,
-      deleteLoading: false
+      deleteLoading: false,
+
+      newEmail: '',
+      emailError: null,
+      emailSuccess: null,
+      addingEmail: false,
+      emailBusy: null
     }
   },
   computed: {
+    sortedEmails() {
+      const list = (this.$auth.user && this.$auth.user.emails) || []
+      // Primary first, then verified, then unverified; stable by addedAt within groups
+      return [...list].sort((a, b) => {
+        if (a.primary !== b.primary) return a.primary ? -1 : 1
+        if (a.verified !== b.verified) return a.verified ? -1 : 1
+        return 0
+      })
+    },
     totalSolved() {
       return this.performance.reduce((sum, p) => sum + p.correct, 0)
     },
@@ -208,6 +289,62 @@ export default {
         this.pwError = result.message
       }
       this.pwLoading = false
+    },
+
+    clearEmailFeedback() {
+      this.emailError = null
+      this.emailSuccess = null
+    },
+    async addEmail() {
+      this.clearEmailFeedback()
+      const addr = this.newEmail.trim().toLowerCase()
+      if (!addr) {
+        this.emailError = 'Please enter an email address.'
+        return
+      }
+      this.addingEmail = true
+      const result = await this.$auth.addEmail(addr)
+      if (result.status) {
+        this.emailSuccess = 'Verification email sent. Check your inbox to confirm.'
+        this.newEmail = ''
+      } else {
+        this.emailError = result.message || 'Failed to add email.'
+      }
+      this.addingEmail = false
+    },
+    async resendVerification(address) {
+      this.clearEmailFeedback()
+      this.emailBusy = address
+      const result = await this.$auth.resendEmailVerification(address)
+      if (result.status) {
+        this.emailSuccess = 'Verification email re-sent.'
+      } else {
+        this.emailError = result.message || 'Failed to resend verification.'
+      }
+      this.emailBusy = null
+    },
+    async makePrimary(address) {
+      this.clearEmailFeedback()
+      this.emailBusy = address
+      const result = await this.$auth.setPrimaryEmail(address)
+      if (result.status) {
+        this.emailSuccess = 'Primary email updated.'
+      } else {
+        this.emailError = result.message || 'Failed to set primary email.'
+      }
+      this.emailBusy = null
+    },
+    async removeEmailAddr(address) {
+      this.clearEmailFeedback()
+      if (!confirm(`Remove ${address} from your account?`)) return
+      this.emailBusy = address
+      const result = await this.$auth.removeEmail(address)
+      if (result.status) {
+        this.emailSuccess = 'Email removed.'
+      } else {
+        this.emailError = result.message || 'Failed to remove email.'
+      }
+      this.emailBusy = null
     },
 
     async submitDelete() {
