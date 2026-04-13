@@ -71,7 +71,11 @@
         </thead>
         <tbody>
           <tr v-for="user in users" :key="user.id">
-            <td>{{ user.name }}</td>
+            <td>
+              <a :href="'/profile/' + user.id" class="text-decoration-none fw-bold" title="Open profile">
+                {{ user.name }}
+              </a>
+            </td>
             <td class="text-muted">{{ user.email }}</td>
 
             <!-- Role: only admins can change roles -->
