@@ -5,14 +5,12 @@
     <!-- Event selector + period tabs -->
     <div class="card card-body mb-4">
       <div class="d-flex align-items-center gap-3 flex-wrap">
-        <label class="fw-bold mb-0">Event:</label>
         <div class="dropdown">
-          <button class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
-            {{ selectedEvent || 'Select event' }}
+          <button class="btn dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-bs-toggle="dropdown">
+            {{ selectedEvent || 'Select the event' }}
           </button>
           <div class="dropdown-menu">
-            <button class="dropdown-item" v-for="event in events" :key="event.name"
-                    @click="selectEvent(event)">{{ event.name }}</button>
+            <button class="btn dropdown-item" v-for="(event, index) in events" :key="index" @click="selectEvent(event)">{{event.name}}</button>
           </div>
         </div>
 
