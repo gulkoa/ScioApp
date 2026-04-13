@@ -70,6 +70,7 @@
 
 <script>
 import ServerTalker from '../ServerTalker'
+import { saveEventName, findSavedEvent } from '../eventStore'
 export default {
     name: 'Library',
     props: {
@@ -120,6 +121,9 @@ export default {
                 this.selectedEvent = this.defaultEvent
                 this.selectedTopics = this.defaultEvent.topics
                 this.refreshQuestions()
+            } else {
+                const saved = findSavedEvent(this.events)
+                if (saved) this.changeEvent(saved)
             }
         } catch(err) {
             this.error = err.message
@@ -133,7 +137,7 @@ export default {
                 if (inNewTab) {
                     window.open(`/question/${this.questions[index]._id}`)
                 } else {
-                    window.location.href = `/question/${this.questions[index]._id}`
+                    this.$router.push(`/question/${this.questions[index]._id}`)
                 }
             }
             else
@@ -156,6 +160,7 @@ export default {
         async changeEvent(event) {
             this.selectedEvent = event
             this.selectedTopics = this.selectedEvent.topics
+            saveEventName(event.name)
             this.updateTopics()
         },
         async selectAllTopics() {

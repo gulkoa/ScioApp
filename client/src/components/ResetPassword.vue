@@ -4,12 +4,12 @@
 
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div v-if="success" class="alert alert-success">
-      {{ success }} <a href="/login">Log in</a>
+      {{ success }} <router-link to="/login">Log in</router-link>
     </div>
 
     <template v-if="!success">
       <div v-if="!token" class="alert alert-warning">
-        Invalid reset link. <a href="/forgot-password">Request a new one</a>.
+        Invalid reset link. <router-link to="/forgot-password">Request a new one</router-link>.
       </div>
 
       <template v-else>
@@ -30,7 +30,7 @@
     </template>
 
     <p class="text-center mt-3 mb-0">
-      <a href="/login">Back to login</a>
+      <router-link to="/login">Back to login</router-link>
     </p>
   </div>
 </template>

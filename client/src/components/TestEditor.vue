@@ -163,6 +163,7 @@
 
 <script>
 import ServerTalker from '../ServerTalker.js'
+import { saveEventName, findSavedEvent } from '../eventStore'
 import MultipleChoice from './questions/MultipleChoice.vue'
 import Cryptography from './questions/Cryptography.vue'
 import Field from './questions/Field.vue'
@@ -238,6 +239,8 @@ export default {
         this.test = this.test || {}
         this.questions = this.questions || []
         this.events = await ServerTalker.getEvents()
+        const saved = findSavedEvent(this.events)
+        if (saved) this.changeEvent(saved)
     },
     methods: {
         freshQuestion() {
@@ -278,6 +281,7 @@ export default {
             this.test.event = event.name
             this.selectedEvent = event
             this.topics = event.topics || []
+            saveEventName(event.name)
         },
         changeNewQuestionType(qType) {
             this.newQuestion.type = qType

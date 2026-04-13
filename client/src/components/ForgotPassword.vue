@@ -19,7 +19,7 @@
     </template>
 
     <p class="text-center mt-3 mb-0">
-      <a href="/login">Back to login</a>
+      <router-link to="/login">Back to login</router-link>
     </p>
   </div>
 </template>

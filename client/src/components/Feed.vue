@@ -69,6 +69,7 @@
 
 <script>
 import ServerTalker from '../ServerTalker'
+import { saveEventName, findSavedEvent } from '../eventStore'
 import QuestionWrapper from './QuestionWrapper.vue'
 import healthPing from '../healthPing'
 export default {
@@ -109,6 +110,8 @@ export default {
       for (let event of this.events)
         for (let topic of event.topics)
           topic.checked = true
+      const saved = findSavedEvent(this.events)
+      if (saved) this.changeEvent(saved)
     } catch(err) {
       this.error = err.message
     }
@@ -141,6 +144,7 @@ export default {
     async changeEvent(event) {
       this.selectedEvent = event
       this.selectedTopics = this.selectedEvent.topics
+      saveEventName(event.name)
       this.updateTopics()
     },
     async selectAllTopics() {

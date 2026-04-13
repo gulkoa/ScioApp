@@ -12,7 +12,7 @@
             </div>
             </div>
 
-            <a v-if="permissions.add" href="/test/editor" class="btn btn-primary ms-auto">Create test</a>
+            <router-link v-if="permissions.add" to="/test/editor" class="btn btn-primary ms-auto">Create test</router-link>
             <p class="fs-6 m-1">{{messages.loadQuestion}}</p>
         </div>
 
@@ -32,6 +32,7 @@
 
 <script>
 import ServerTalker from '../ServerTalker'
+import { saveEventName, findSavedEvent } from '../eventStore'
 export default {
     name: 'TestLibrary',
     props: {
@@ -58,6 +59,8 @@ export default {
             this.events = await ServerTalker.getEvents()
             this.permissions.manage = ServerTalker.hasPermission('manage:db')
             this.permissions.add = ServerTalker.hasPermission('add:db')
+            const saved = findSavedEvent(this.events)
+            if (saved) this.changeEvent(saved)
 
         } catch(err) {
         this.error = err.message
@@ -67,6 +70,7 @@ export default {
     methods: {
         async changeEvent(event) {
             this.selectedEvent = event
+            saveEventName(event.name)
             this.update()
         },
 
@@ -87,7 +91,7 @@ export default {
             if (inNewTab) {
                 window.open(`/test/${this.tests[index]._id}`)
             } else {
-                window.location.href = `/test/${this.tests[index]._id}`
+                this.$router.push(`/test/${this.tests[index]._id}`)
             }
         },
     }

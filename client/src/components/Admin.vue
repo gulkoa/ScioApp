@@ -72,9 +72,9 @@
         <tbody>
           <tr v-for="user in users" :key="user.id">
             <td>
-              <a :href="'/profile/' + user.id" class="text-decoration-none fw-bold" title="Open profile">
+              <router-link :to="'/profile/' + user.id" class="text-decoration-none fw-bold" title="Open profile">
                 {{ user.name }}
-              </a>
+              </router-link>
             </td>
             <td class="text-muted">{{ user.email }}</td>
 
