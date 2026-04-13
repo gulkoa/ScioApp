@@ -95,8 +95,8 @@ class ServerTalker {
 
     // --- Rankings ---
 
-    static async getRanking(event) {
-        return this.post('question/getRanking', { event })
+    static async getRanking(event, period = 'week') {
+        return this.post('question/getRanking', { event, period })
     }
 
     // --- Performance ---

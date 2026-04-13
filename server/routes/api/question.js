@@ -503,51 +503,119 @@ router.delete('/deleteEvent/:id', requireAdmin, async (req, res) => {
     }
 })
 
-// Weekly leaderboard — scores users by correct submissions this week (Mon–Sun)
-// Faster solves score higher. MADTON submissions count under Codebusters.
+// Helper: compute Monday 00:00 UTC of the week containing `date`
+function startOfWeekUTC(date) {
+    const d = new Date(date)
+    const day = d.getUTCDay()
+    const diffToMonday = day === 0 ? 6 : day - 1
+    d.setUTCDate(d.getUTCDate() - diffToMonday)
+    d.setUTCHours(0, 0, 0, 0)
+    return d
+}
+
+// Helper: compute first day 00:00 UTC of the month containing `date`
+function startOfMonthUTC(date) {
+    const d = new Date(date)
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1))
+}
+
+// Helper: aggregate submissions into a sorted scores array
+function aggregateScores(submissions) {
+    const userMap = {}
+    for (const sub of submissions) {
+        if (!userMap[sub.userID]) {
+            userMap[sub.userID] = { userID: sub.userID, solved: 0, score: 0, totalTime: 0 }
+        }
+        const u = userMap[sub.userID]
+        u.solved++
+        const solveTime = sub.userSolution?.time || 0
+        u.totalTime += solveTime
+        const speedBonus = solveTime > 0 ? Math.max(0, 500 - solveTime / 10) : 0
+        u.score += 1000 + Math.round(speedBonus)
+    }
+    return Object.values(userMap).sort((a, b) => b.score - a.score)
+}
+
+// Leaderboard with weekly / monthly / all-time support and a "calendar" history
+// of past period winners (for the tiny calendar avatars view).
 router.post('/getRanking', requirePermission('read:db'), async (req, res) => {
     try {
-        let { event } = req.body
+        let { event, period } = req.body
+        period = period === 'month' || period === 'all' ? period : 'week'
 
-        // Calculate current week boundaries (Monday 00:00 to Sunday 23:59)
         const now = new Date()
-        const day = now.getUTCDay() // 0=Sun, 1=Mon...
-        const diffToMonday = day === 0 ? 6 : day - 1
-        const monday = new Date(now)
-        monday.setUTCDate(now.getUTCDate() - diffToMonday)
-        monday.setUTCHours(0, 0, 0, 0)
-        const sunday = new Date(monday)
-        sunday.setUTCDate(monday.getUTCDate() + 7)
+        let periodStart = null
+        let periodEnd = null
+        if (period === 'week') {
+            periodStart = startOfWeekUTC(now)
+            periodEnd = new Date(periodStart)
+            periodEnd.setUTCDate(periodStart.getUTCDate() + 7)
+        } else if (period === 'month') {
+            periodStart = startOfMonthUTC(now)
+            periodEnd = new Date(Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth() + 1, 1))
+        }
 
         // MADTON submissions are stored with event "Codebusters"
         const eventFilter = event === 'Codebusters' ? { $in: ['Codebusters'] } : event
 
-        // Get all correct submissions this week for the event
-        const submissions = await db.submissions.find({
+        // Current period submissions
+        const currentMatch = {
             event: eventFilter,
-            'checkReport.correct': true,
-            timestamp: { $gte: monday, $lt: sunday }
-        }).toArray()
+            'checkReport.correct': true
+        }
+        if (periodStart) currentMatch.timestamp = { $gte: periodStart, $lt: periodEnd }
+        const submissions = await db.submissions.find(currentMatch).toArray()
+        let scores = aggregateScores(submissions)
 
-        // Build scores per user — each correct answer = 1000 pts + speed bonus
-        const userMap = {}
-        for (const sub of submissions) {
-            if (!userMap[sub.userID]) {
-                userMap[sub.userID] = { userID: sub.userID, solved: 0, score: 0, totalTime: 0 }
+        // Build a per-period history of winners (for the calendar view).
+        // For week: last 12 weeks. For month: last 12 months. For all-time: skip.
+        const historyBuckets = []
+        if (period === 'week') {
+            for (let i = 0; i < 12; i++) {
+                const start = new Date(periodStart)
+                start.setUTCDate(periodStart.getUTCDate() - 7 * i)
+                const end = new Date(start)
+                end.setUTCDate(start.getUTCDate() + 7)
+                historyBuckets.push({ start, end })
             }
-            const u = userMap[sub.userID]
-            u.solved++
-            const solveTime = sub.userSolution?.time || 0
-            u.totalTime += solveTime
-            // Base 1000 pts per solve + speed bonus (faster = higher)
-            const speedBonus = solveTime > 0 ? Math.max(0, 500 - solveTime / 10) : 0
-            u.score += 1000 + Math.round(speedBonus)
+        } else if (period === 'month') {
+            for (let i = 0; i < 12; i++) {
+                const start = new Date(Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth() - i, 1))
+                const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1))
+                historyBuckets.push({ start, end })
+            }
         }
 
-        let scores = Object.values(userMap)
+        // Aggregate winners across all history buckets in a single query
+        let history = []
+        if (historyBuckets.length > 0) {
+            const earliest = historyBuckets[historyBuckets.length - 1].start
+            const latest = historyBuckets[0].end
+            const histSubs = await db.submissions.find({
+                event: eventFilter,
+                'checkReport.correct': true,
+                timestamp: { $gte: earliest, $lt: latest }
+            }).toArray()
 
-        // Resolve user names from DB
-        const userIds = scores.map(s => s.userID)
+            history = historyBuckets.map(b => {
+                const subs = histSubs.filter(s => {
+                    const t = new Date(s.timestamp)
+                    return t >= b.start && t < b.end
+                })
+                const ranked = aggregateScores(subs)
+                return {
+                    start: b.start.toISOString(),
+                    end: b.end.toISOString(),
+                    winner: ranked[0] || null
+                }
+            })
+        }
+
+        // Resolve user names + avatars for everyone we need (current + winners)
+        const allIds = new Set(scores.map(s => s.userID))
+        history.forEach(h => { if (h.winner) allIds.add(h.winner.userID) })
+        const userIds = [...allIds]
+
         const users = await db.users.find(
             { _id: { $in: userIds.map(id => { try { return new mongodb.ObjectId(id) } catch(e) { return id } }) } },
             { projection: { name: 1, email: 1 } }
@@ -558,18 +626,23 @@ router.post('/getRanking', requirePermission('read:db'), async (req, res) => {
             nameMap[u._id.toString()] = u.name || u.email
             pictureMap[u._id.toString()] = gravatarUrl(u.email, 64)
         })
-
-        scores.forEach(s => {
+        const decorate = s => {
             s.name = nameMap[s.userID] || s.userID
             s.picture = pictureMap[s.userID] || null
-        })
-        scores.sort((a, b) => b.score - a.score)
+        }
+        scores.forEach(decorate)
+        history.forEach(h => { if (h.winner) decorate(h.winner) })
 
         res.json({
             status: true,
             users: scores,
-            weekStart: monday.toISOString(),
-            weekEnd: sunday.toISOString()
+            period,
+            periodStart: periodStart ? periodStart.toISOString() : null,
+            periodEnd: periodEnd ? periodEnd.toISOString() : null,
+            // Backwards compat with old client expecting weekStart/weekEnd
+            weekStart: periodStart ? periodStart.toISOString() : null,
+            weekEnd: periodEnd ? periodEnd.toISOString() : null,
+            history
         })
     } catch(err) {
         console.error(err)
