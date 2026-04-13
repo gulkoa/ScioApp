@@ -166,8 +166,17 @@ async function migrate() {
     // --- 7. Create indexes ---
     console.log('\n--- Creating indexes ---')
 
-    await newDb.collection('users').createIndex({ email: 1 }, { unique: true })
-    console.log('  users: { email: 1 } unique')
+    // Partial unique index on verified emails. Unverified duplicates are
+    // allowed across users (verify-wins race resolves them).
+    await newDb.collection('users').createIndex(
+        { 'emails.address': 1 },
+        {
+            unique: true,
+            partialFilterExpression: { 'emails.verified': true },
+            name: 'emails_verified_unique'
+        }
+    )
+    console.log('  users: partial unique on verified emails.address')
 
     await newDb.collection('events').createIndex({ name: 1 }, { unique: true })
     console.log('  events: { name: 1 } unique')
